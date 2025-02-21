@@ -1,9 +1,0 @@
-{
-	"RemapUnityFiles": 
-	{
-		"Module.ToShader.cpp.obj": [
-			"PerModuleInline.gen.cpp.obj",
-			"ToShader.cpp.obj"
-		]
-	}
-}
