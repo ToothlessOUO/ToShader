@@ -83,6 +83,7 @@ void FToShaderModule::ApplyEngineConfigs()
 	ConfigKV.Emplace("r.Nanite.Allowtessellation","1");
 	ConfigKV.Emplace("r.Nanite.Tessellation","1");
 	ConfigKV.Emplace("r.VirtualTextures","False");
+	ConfigKV.Emplace("r.DistanceFieldAO","0");
 	FToShaderHelpers::modifyConifg(ConfigPath,Section,ConfigKV);
 }
 
