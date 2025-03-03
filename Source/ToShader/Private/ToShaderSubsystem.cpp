@@ -1,51 +1,59 @@
 #include "ToShaderSubsystem.h"
-
-#include "EngineAnalytics.h"
-#include "ToShader.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "ToShaderModule.h"
+#include "MeshRenderer.h"
+#include "Kismet/KismetArrayLibrary.h"
 
 #define tolog FToShaderHelpers::log
+
+
 
 UToShaderSubsystem::UToShaderSubsystem()
 {
 }
 
-bool UToShaderSubsystem::ShouldUpdateEyeBrows(double TimeVersion, double& CurTimerVersion) const
+TArray<TWeakObjectPtr<UPrimitiveComponent>> UToShaderSubsystem::GetShowList(ERendererTag Tag)
 {
-	CurTimerVersion = EyeBrowTimeVersion;
-	return FMath::IsNearlyEqual(TimeVersion,EyeBrowTimeVersion);
-}
-
-void UToShaderSubsystem::AddEyeBrowComponents(AActor* Actor, TArray<UPrimitiveComponent*> Components)
-{
-	if (Actor == nullptr || Components.IsEmpty()) return;
-	FPrimitiveComponents PrimitiveComponents;
-	PrimitiveComponents.Components = Components;
-	EyeBrowMap.FindOrAdd(Actor);
-	EyeBrowMap[Actor] = PrimitiveComponents;
-	tolog("NewActorCompAdd :"+Actor->GetName()+" ",Components.Num());
-	bIsEyeBrowComponentsChanged = true;
-}
-
-TArray<UPrimitiveComponent*> UToShaderSubsystem::GetEyeBrowComponents()
-{
-	return EyeBrowComponents;
-}
-
-void UToShaderSubsystem::UpdateEyeBrowComponentsFromMap()
-{
-	if (!bIsEyeBrowComponentsChanged) return;
-	EyeBrowMap.Remove(nullptr);
-	EyeBrowComponents.Empty();
-	for (auto Ele : EyeBrowMap)
+	TArray<TWeakObjectPtr<UPrimitiveComponent>> ShowList;
+	for (const auto M : Modules)
 	{
-		if (!Ele.Value.Components.IsEmpty())
-			EyeBrowComponents.Append(Ele.Value.Components);
+		if (!M->RendererGroup.Contains(Tag)) continue;
+		for (auto G : M->RendererGroup[Tag].Components)
+		{
+			TWeakObjectPtr<UPrimitiveComponent> P = MakeWeakObjectPtr(G);
+			ShowList.Add(P);
+		}
 	}
-
-	bIsEyeBrowComponentsChanged = false;
-	EyeBrowTimeVersion = UKismetSystemLibrary::GetGameTimeInSeconds(GetWorld());
+	return ShowList;
 }
+
+TArray<TWeakObjectPtr<UPrimitiveComponent>> UToShaderSubsystem::GetShowList(TArray<ERendererTag> Tags)
+{
+	TArray<TWeakObjectPtr<UPrimitiveComponent>> ShowList;
+	for (auto Tag : Tags)
+	{
+		auto List = GetShowList(Tag);
+		if (List.IsEmpty()) continue;
+		ShowList.Append(List);
+	}
+	return ShowList;
+}
+
+void UToShaderSubsystem::AddModuleToSubsystem(UToShaderModule* Module)
+{
+	if (!Module) return;
+	if (! Modules.Contains(Module))
+		Modules.Add(Module);
+	bShouldUpdateShowLists = true;
+}
+
+void UToShaderSubsystem::AddMeshRendererToSubsystem(AMeshRenderer* Actor)
+{
+	if (!Actor || MeshRenderers.Contains(Actor)) return;
+	if (!MeshRenderers.Contains(Actor))
+		MeshRenderers.Add(Actor);
+	bShouldUpdateShowLists = true;
+}
+
 
 void UToShaderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -60,8 +68,40 @@ void UToShaderSubsystem::Deinitialize()
 	FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 }
 
+void UToShaderSubsystem::SetShowLists()
+{
+	if (MeshRenderers.IsEmpty()) return;
+	Modules.RemoveAll([](UToShaderModule* Module)
+	{
+		return Module == nullptr;
+	});
+	MeshRenderers.RemoveAll([](AMeshRenderer* Renderer)
+	{
+		return Renderer == nullptr;
+	});
+	TMap<ERendererTag, FShowList> SavedList;
+	for (auto Renderer : MeshRenderers)
+	{
+		FShowList CurList;
+		for (ERendererTag Tag : Renderer->TargetMeshTags)
+		{
+			if (SavedList.Contains(Tag))
+			{
+				CurList.List.Append(SavedList[Tag].List);
+			}else
+			{
+				auto NewList = GetShowList(Tag);
+				CurList.List.Append(NewList);
+				SavedList.Emplace(Tag, NewList);
+			}
+		}
+		Renderer->SetShowList(CurList.List);
+	}
+	bShouldUpdateShowLists = false;
+}
+
 bool UToShaderSubsystem::Tick(float DeltaTime)
 {
-	UpdateEyeBrowComponentsFromMap();
+	if (bShouldUpdateShowLists) SetShowLists();
 	return true;
 }

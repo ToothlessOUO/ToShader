@@ -1,5 +1,9 @@
 #include "ToShaderModule.h"
 
+#include "ToShader.h"
+
+#define tolog FToShaderHelpers::log
+
 UToShaderModule::UToShaderModule()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -15,7 +19,7 @@ void UToShaderModule::BeginPlay()
 void UToShaderModule::PostInitProperties()
 {
 	Super::PostInitProperties();
-	InitEyeBrow();
+	CollectTargets();
 }
 
 UToShaderSubsystem* UToShaderModule::GetSubsystem()
@@ -23,21 +27,31 @@ UToShaderSubsystem* UToShaderModule::GetSubsystem()
 	return GEngine->GetEngineSubsystem<UToShaderSubsystem>();
 }
 
-void UToShaderModule::InitEyeBrow()
+void UToShaderModule::CollectTargets()
 {
-	if (!GetOwner()) return;
-	auto T = GetOwner()->GetComponentsByTag(UPrimitiveComponent::StaticClass(),EyeBrowTag);
-	if (T.IsEmpty()) return;
-	for (const auto ActorComponent : T)
+	if (!GetOwner() || !GetSubsystem()) return;
+	RendererGroup.Empty();
+	const auto EnumPtr = StaticEnum<ERendererTag>();
+	if (!EnumPtr) return;
+	for (ERendererTag E : TEnumRange<ERendererTag>())
 	{
-		if (ActorComponent==nullptr) continue;
-		auto Primitive = Cast<UPrimitiveComponent>(ActorComponent);
-		if (Primitive==nullptr) continue;
-		EyeBrowTargets.Add(Primitive);
+		const auto TagName = FName(EnumPtr->GetNameStringByValue(static_cast<int64>(E)));
+		auto Components = GetOwner()->GetComponentsByTag(UPrimitiveComponent::StaticClass(),TagName);
+		if (Components.IsEmpty()) continue;
+		FMeshGroup Group;   
+		for (const auto Component : Components)
+		{
+			auto P = Cast<UPrimitiveComponent>(Component);
+			if (!P)
+			{
+				Group.Components.Add(P);
+			}
+		}
+		if (Group.Components.IsEmpty()) continue;
+		Group.Module=this;
+		RendererGroup.Emplace(E, Group);
 	}
-	auto S = GetSubsystem();
-	if (EyeBrowTargets.IsEmpty() || S==nullptr) return;
-	S->AddEyeBrowComponents(GetOwner(), EyeBrowTargets);
+	GetSubsystem()->AddModuleToSubsystem(this);
 }
 
 

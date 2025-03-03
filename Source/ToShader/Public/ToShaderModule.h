@@ -14,11 +14,11 @@ class TOSHADER_API UToShaderModule : public UActorComponent
 	GENERATED_BODY()
 
 public:
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category="EyeBrow")
-	FName EyeBrowTag = TEXT("EyeBrow");
 	
 	UToShaderModule();
+
+	UPROPERTY()
+	TMap<ERendererTag,FMeshGroup> RendererGroup;
 
 protected:
 	virtual void BeginPlay() override;
@@ -26,11 +26,11 @@ protected:
 
 	virtual void PostInitProperties() override;
 
+	friend class UToShaderSubsystem;
+	void CollectTargets();
+
 private:
 	UToShaderSubsystem* GetSubsystem();
 
-	void InitEyeBrow();
-	UPROPERTY()
-	TArray<UPrimitiveComponent*> EyeBrowTargets;
 	
 };
