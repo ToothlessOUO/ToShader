@@ -1,11 +1,10 @@
 #include "ToShaderSubsystem.h"
 #include "ToShaderModule.h"
 #include "MeshRenderer.h"
-#include "Kismet/KismetArrayLibrary.h"
+#include "ToShader.h"
+#include "Components/SceneCaptureComponent2D.h"
 
 #define tolog FToShaderHelpers::log
-
-
 
 UToShaderSubsystem::UToShaderSubsystem()
 {
@@ -16,6 +15,7 @@ TArray<TWeakObjectPtr<UPrimitiveComponent>> UToShaderSubsystem::GetShowList(ERen
 	TArray<TWeakObjectPtr<UPrimitiveComponent>> ShowList;
 	for (const auto M : Modules)
 	{
+		if (!M) continue;
 		if (!M->RendererGroup.Contains(Tag)) continue;
 		for (auto G : M->RendererGroup[Tag].Components)
 		{
@@ -58,7 +58,7 @@ void UToShaderSubsystem::AddMeshRendererToSubsystem(AMeshRenderer* Actor)
 void UToShaderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-
+	
 	TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &ThisClass::Tick));
 }
 
@@ -66,6 +66,11 @@ void UToShaderSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
 	FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
+}
+
+void UToShaderSubsystem::SetShowList(AMeshRenderer* MeshRenderer)
+{
+	MeshRenderer->SetShowList(GetShowList(MeshRenderer->TargetMeshTags.Array()));
 }
 
 void UToShaderSubsystem::SetShowLists()
@@ -83,6 +88,8 @@ void UToShaderSubsystem::SetShowLists()
 	for (auto Renderer : MeshRenderers)
 	{
 		FShowList CurList;
+		if (Renderer->TargetMeshTags.IsEmpty()) continue;
+		
 		for (ERendererTag Tag : Renderer->TargetMeshTags)
 		{
 			if (SavedList.Contains(Tag))

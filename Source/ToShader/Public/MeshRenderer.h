@@ -14,20 +14,20 @@ public:
 	AMeshRenderer();
 
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite)
-	TArray<ERendererTag> TargetMeshTags;
+	TSet<ERendererTag> TargetMeshTags;
 
 	UPROPERTY(BlueprintReadOnly)
 	TArray<USceneCaptureComponent2D*> Captures;
 
 	void SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList);
 
+	bool HasInit = false;
 
 protected:
 	virtual void BeginPlay() override;
-	virtual void PostInitProperties() override;
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void Tick(float DeltaTime) override;
-
-	void CleanTargetTags();
+	
 	void CollectCaptures();
 
 	UToShaderSubsystem* GetSubsystem();

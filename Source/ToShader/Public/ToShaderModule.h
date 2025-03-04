@@ -26,8 +26,8 @@ protected:
 
 	virtual void PostInitProperties() override;
 
-	friend class UToShaderSubsystem;
-	void CollectTargets();
+	void CollectTargetsAndCallSubsystem();
+	
 
 private:
 	UToShaderSubsystem* GetSubsystem();

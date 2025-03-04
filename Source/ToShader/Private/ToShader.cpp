@@ -29,6 +29,12 @@ void FToShaderHelpers::log(FString msg, int b, bool printAsBool)
 	log(msg);
 }
 
+void FToShaderHelpers::log(FString msg, FName i)
+{
+	msg+=i.ToString();
+	log(msg);
+}
+
 void FToShaderHelpers::log(FString msg, float i)
 {
 	msg += FString::SanitizeFloat(i);

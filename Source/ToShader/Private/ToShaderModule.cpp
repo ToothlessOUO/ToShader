@@ -19,7 +19,7 @@ void UToShaderModule::BeginPlay()
 void UToShaderModule::PostInitProperties()
 {
 	Super::PostInitProperties();
-	CollectTargets();
+	CollectTargetsAndCallSubsystem();
 }
 
 UToShaderSubsystem* UToShaderModule::GetSubsystem()
@@ -27,7 +27,7 @@ UToShaderSubsystem* UToShaderModule::GetSubsystem()
 	return GEngine->GetEngineSubsystem<UToShaderSubsystem>();
 }
 
-void UToShaderModule::CollectTargets()
+void UToShaderModule::CollectTargetsAndCallSubsystem()
 {
 	if (!GetOwner() || !GetSubsystem()) return;
 	RendererGroup.Empty();
@@ -37,18 +37,19 @@ void UToShaderModule::CollectTargets()
 	{
 		const auto TagName = FName(EnumPtr->GetNameStringByValue(static_cast<int64>(E)));
 		auto Components = GetOwner()->GetComponentsByTag(UPrimitiveComponent::StaticClass(),TagName);
-		if (Components.IsEmpty()) continue;
+		if (Components.IsEmpty())
+		{
+			continue;
+		}
 		FMeshGroup Group;   
 		for (const auto Component : Components)
 		{
-			auto P = Cast<UPrimitiveComponent>(Component);
-			if (!P)
+			if (auto P = Cast<UPrimitiveComponent>(Component))
 			{
 				Group.Components.Add(P);
 			}
 		}
 		if (Group.Components.IsEmpty()) continue;
-		Group.Module=this;
 		RendererGroup.Emplace(E, Group);
 	}
 	GetSubsystem()->AddModuleToSubsystem(this);

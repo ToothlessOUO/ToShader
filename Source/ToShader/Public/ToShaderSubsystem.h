@@ -12,8 +12,6 @@ struct FMeshGroup
 {
 	GENERATED_BODY()
 	UPROPERTY()
-	UToShaderModule* Module;
-	UPROPERTY()
 	TArray<UPrimitiveComponent*> Components;
 };
 
@@ -61,6 +59,7 @@ private:
 	UPROPERTY()
 	TArray<AMeshRenderer*> MeshRenderers;
 
+	void SetShowList(AMeshRenderer* MeshRenderer);
 	void SetShowLists();
 	
 	
