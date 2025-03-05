@@ -9,8 +9,8 @@ class FToShaderHelpers
 	public:
 	static void log(FString msg);
 	static void log(FString msg,float i);
-	static void log(FString msg,int b,bool printAsBool = false);
 	static void log(FString msg,FName i);
+	static void log(FString msg,int b,bool printAsBool = false);
 	static void modifyConifg(FString path,FString section, TMap<FString,FString> key_val);
 };
 

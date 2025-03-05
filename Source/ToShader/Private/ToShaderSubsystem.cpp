@@ -109,6 +109,6 @@ void UToShaderSubsystem::SetShowLists()
 
 bool UToShaderSubsystem::Tick(float DeltaTime)
 {
-	if (bShouldUpdateShowLists) SetShowLists();
+	SetShowLists();
 	return true;
 }

@@ -10,6 +10,9 @@ AMeshRenderer::AMeshRenderer()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	PrimaryActorTick.bStartWithTickEnabled = false;
+
+	PreTick = CreateDefaultSubobject<UPreTick>(TEXT("PreTick"));
+	PostTick = CreateDefaultSubobject<UPostTick>(TEXT("PostTick"));
 }
 
 void AMeshRenderer::SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList)
@@ -23,7 +26,6 @@ void AMeshRenderer::SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewL
 void AMeshRenderer::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 void AMeshRenderer::OnConstruction(const FTransform& Transform)
@@ -48,6 +50,7 @@ void AMeshRenderer::CollectCaptures()
 		if (!Component) continue;
 		auto Capture = Cast<USceneCaptureComponent2D>(Component);
 		if (!Capture) continue;
+		Capture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
 		Captures.Add(Capture);
 	}
 }
@@ -58,4 +61,66 @@ UToShaderSubsystem* AMeshRenderer::GetSubsystem()
 	return GEngine->GetEngineSubsystem<UToShaderSubsystem>();
 }
 
+#pragma region TickStage
 
+UPreTick::UPreTick()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	bTickInEditor = true;
+	PrimaryComponentTick.SetTickFunctionEnable(true);
+	SetTickGroup(TG_PrePhysics);
+}
+
+void UPreTick::PostInitProperties()
+{
+	Super::PostInitProperties();
+}
+
+void UPreTick::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (Interface)
+	{
+		Interface->Execute_OnPreTick(GetOwner(), DeltaTime);
+	}
+	else
+	{
+		if (!GetOwner()) return;
+		if (GetOwner()->GetClass()->ImplementsInterface(UTickStageInterface::StaticClass()))
+		{
+			Interface = Cast<ITickStageInterface>(GetOwner());
+		}
+	}
+}
+
+UPostTick::UPostTick()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	bTickInEditor = true;
+	PrimaryComponentTick.SetTickFunctionEnable(true);
+	SetTickGroup(TG_PostPhysics);
+}
+
+void UPostTick::PostInitProperties()
+{
+	Super::PostInitProperties();
+}
+
+void UPostTick::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (Interface)	
+	{
+		Interface->Execute_OnPostTick(GetOwner(), DeltaTime);
+	}
+	else
+	{
+		if (!GetOwner()) return;
+		if (GetOwner()->GetClass()->ImplementsInterface(UTickStageInterface::StaticClass()))
+		{
+			Interface = Cast<ITickStageInterface>(GetOwner());
+		}
+	}
+}
+
+#pragma endregion
