@@ -1,8 +1,11 @@
 #include "ToShader.h"
+#include "Interfaces/IPluginManager.h"
+#include "Modules/ModuleManager.h"
+#include "ToShaderSubsystem.h"
+#include "Misc/Paths.h"
+#include "ShaderCore.h"
 
-#include "ISettingsModule.h"
-
-DEFINE_LOG_CATEGORY(ToShader);
+DEFINE_LOG_CATEGORY(LogToShader);
 
 #define LOCTEXT_NAMESPACE "FToShaderModule"
 
@@ -11,7 +14,7 @@ DEFINE_LOG_CATEGORY(ToShader);
 #pragma region ToShaderHelpers
 void FToShaderHelpers::log(FString msg)
 {
-	UE_LOG(ToShader, Warning, TEXT("%s"), *msg);
+	UE_LOG(LogToShader, Warning, TEXT("%s"), *msg);
 }
 
 void FToShaderHelpers::log(FString msg, int b, bool printAsBool)
@@ -65,13 +68,49 @@ void FToShaderHelpers::modifyConifg(FString path, FString section, TMap<FString,
 	tolog("update success "+ path);
 }
 
+void FToShaderHelpers::getMeshMaterials(UPrimitiveComponent* mesh,FMaterialGroup& outMaterials)
+{
+	for (int i=0;i<mesh->GetNumMaterials();i++)
+	{
+		outMaterials.Materials.Add(mesh->GetMaterial(i));
+	}
+}
+
+void FToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, UMaterialInterface* mat)
+{
+	if (mesh == nullptr || mat == nullptr) return;
+	for (int i=0;i<mesh->GetNumMaterials();i++)
+	{
+		mesh->SetMaterial(i,mat);
+	}
+}
+
+void FToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, TArray<UMaterialInterface*> mats)
+{
+	if (mats.Num() < mesh->GetNumMaterials()) return;
+	for (int i=0;i<mesh->GetNumMaterials();i++)
+	{
+		mesh->SetMaterial(i,mats[i]);
+	}
+}
+
+int FToShaderHelpers::getRTSizeScale(ERTSizeScale scale)
+{
+	if (scale == ERTSizeScale::Default) return 1;
+	return static_cast<int>(scale);
+}
+
 #pragma endregion
 
 #pragma region ModuleFunctions
+
 void FToShaderModule::StartupModule()
 {
 	TickDelegate = FTickerDelegate::CreateRaw(this, &FToShaderModule::Tick);
 	TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(TickDelegate);
+
+	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("ToShader"))->GetBaseDir(), TEXT("Shaders"));
+	AddShaderSourceDirectoryMapping(TEXT("/Plugin/Runtime/ToShader"), PluginShaderDir);
 
 	ApplyEngineConfigs();
 }
@@ -93,12 +132,12 @@ void FToShaderModule::ApplyEngineConfigs()
 	FToShaderHelpers::modifyConifg(ConfigPath,Section,ConfigKV);
 }
 
-#pragma endregion
-
 bool FToShaderModule::Tick(float DeltaTime)
 {
 	return true;
 }
+
+#pragma endregion
 
 #undef LOCTEXT_NAMESPACE
 

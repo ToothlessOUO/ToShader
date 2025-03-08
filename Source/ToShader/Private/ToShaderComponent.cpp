@@ -1,33 +1,33 @@
-#include "ToShaderModule.h"
+#include "ToShaderComponent.h"
 
 #include "ToShader.h"
 
 #define tolog FToShaderHelpers::log
 
-UToShaderModule::UToShaderModule()
+UToShaderComponent::UToShaderComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
 
-void UToShaderModule::BeginPlay()
+void UToShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
 }
 
-void UToShaderModule::PostInitProperties()
+void UToShaderComponent::PostInitProperties()
 {
 	Super::PostInitProperties();
 	CollectTargetsAndCallSubsystem();
 }
 
-UToShaderSubsystem* UToShaderModule::GetSubsystem()
+UToShaderSubsystem* UToShaderComponent::GetSubsystem()
 {
-	return GEngine->GetEngineSubsystem<UToShaderSubsystem>();
+	return UToShaderSubsystem::GetSubsystem();
 }
 
-void UToShaderModule::CollectTargetsAndCallSubsystem()
+void UToShaderComponent::CollectTargetsAndCallSubsystem()
 {
 	if (!GetOwner() || !GetSubsystem()) return;
 	RendererGroup.Empty();
@@ -46,6 +46,8 @@ void UToShaderModule::CollectTargetsAndCallSubsystem()
 		{
 			if (auto P = Cast<UPrimitiveComponent>(Component))
 			{
+				// if (UToShaderSubsystem::IsMeshContainsTag(P,ERendererTag::VisInCaptureOnly))
+				// 	P->bVisibleInSceneCaptureOnly = true;
 				Group.Components.Add(P);
 			}
 		}
@@ -56,7 +58,7 @@ void UToShaderModule::CollectTargetsAndCallSubsystem()
 }
 
 
-void UToShaderModule::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UToShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 

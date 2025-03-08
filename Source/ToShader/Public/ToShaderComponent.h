@@ -5,17 +5,17 @@
 #include "CoreMinimal.h"
 #include "ToShaderSubsystem.h"
 #include "Components/ActorComponent.h"
-#include "ToShaderModule.generated.h"
+#include "ToShaderComponent.generated.h"
 
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOSHADER_API UToShaderModule : public UActorComponent
+class TOSHADER_API UToShaderComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
 	
-	UToShaderModule();
+	UToShaderComponent();
 
 	UPROPERTY()
 	TMap<ERendererTag,FMeshGroup> RendererGroup;

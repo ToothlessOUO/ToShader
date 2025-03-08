@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 using UnrealBuildTool;
 
 public class ToShader : ModuleRules
@@ -38,7 +36,13 @@ public class ToShader : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"ApplicationCore",
+				"Core",
 				"DeveloperSettings",
+				"Projects",
+				"RHI",
+				"RenderCore",
+				"Renderer",
 				
 				// ... add private dependencies that you statically link with here ...	
 			}

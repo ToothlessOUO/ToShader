@@ -6,13 +6,12 @@
 
 #define tolog FToShaderHelpers::log
 
+#pragma region MeshRenderer
 AMeshRenderer::AMeshRenderer()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
-	PreTick = CreateDefaultSubobject<UPreTick>(TEXT("PreTick"));
-	PostTick = CreateDefaultSubobject<UPostTick>(TEXT("PostTick"));
 }
 
 void AMeshRenderer::SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList)
@@ -31,9 +30,7 @@ void AMeshRenderer::BeginPlay()
 void AMeshRenderer::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	CollectCaptures();
-	if (GetSubsystem())
-		GetSubsystem()->AddMeshRendererToSubsystem(this);
+	Setup();
 }
 
 void AMeshRenderer::Tick(float DeltaTime)
@@ -41,7 +38,7 @@ void AMeshRenderer::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AMeshRenderer::CollectCaptures()
+void AMeshRenderer::Setup()
 {
 	Captures.Empty();
 	auto Components = GetComponents();
@@ -53,6 +50,8 @@ void AMeshRenderer::CollectCaptures()
 		Capture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
 		Captures.Add(Capture);
 	}
+	if (GetSubsystem())
+		GetSubsystem()->AddMeshRendererToSubsystem(this);
 }
 
 UToShaderSubsystem* AMeshRenderer::GetSubsystem()
@@ -61,66 +60,63 @@ UToShaderSubsystem* AMeshRenderer::GetSubsystem()
 	return GEngine->GetEngineSubsystem<UToShaderSubsystem>();
 }
 
-#pragma region TickStage
-
-UPreTick::UPreTick()
-{
-	PrimaryComponentTick.bCanEverTick = true;
-	bTickInEditor = true;
-	PrimaryComponentTick.SetTickFunctionEnable(true);
-	SetTickGroup(TG_PrePhysics);
-}
-
-void UPreTick::PostInitProperties()
-{
-	Super::PostInitProperties();
-}
-
-void UPreTick::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (Interface)
-	{
-		Interface->Execute_OnPreTick(GetOwner(), DeltaTime);
-	}
-	else
-	{
-		if (!GetOwner()) return;
-		if (GetOwner()->GetClass()->ImplementsInterface(UTickStageInterface::StaticClass()))
-		{
-			Interface = Cast<ITickStageInterface>(GetOwner());
-		}
-	}
-}
-
-UPostTick::UPostTick()
-{
-	PrimaryComponentTick.bCanEverTick = true;
-	bTickInEditor = true;
-	PrimaryComponentTick.SetTickFunctionEnable(true);
-	SetTickGroup(TG_PostPhysics);
-}
-
-void UPostTick::PostInitProperties()
-{
-	Super::PostInitProperties();
-}
-
-void UPostTick::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (Interface)	
-	{
-		Interface->Execute_OnPostTick(GetOwner(), DeltaTime);
-	}
-	else
-	{
-		if (!GetOwner()) return;
-		if (GetOwner()->GetClass()->ImplementsInterface(UTickStageInterface::StaticClass()))
-		{
-			Interface = Cast<ITickStageInterface>(GetOwner());
-		}
-	}
-}
-
 #pragma endregion
+
+#pragma region MeshRenderer Pro
+
+AMeshRendererPro::AMeshRendererPro()
+{
+}
+
+void AMeshRendererPro::SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList)
+{
+	//更新 pass mesh
+	if (!TargetPass.Pass.IsValid())
+	{
+		Setup();
+		return;
+	}
+	TargetPass.Pass->ShowList = NewList;
+}
+
+void AMeshRendererPro::CallBackWhenAddToSubsystemSuccess(FPassContainer Pass)
+{
+	Pass.Pass->Setup(this);
+	TargetPass = Pass;
+}
+
+void AMeshRendererPro::SaveMeshMaterialWhenRendering(UPrimitiveComponent* Mesh, TMap<UPrimitiveComponent*, FMaterialGroup>& Saved)
+{
+	if (!Mesh) return;
+	if (TagMeshMaterialWhenRendering.IsEmpty()) return;
+	for (const auto Element : TagMeshMaterialWhenRendering)
+	{
+		if (UToShaderSubsystem::IsMeshContainsTag(Mesh, Element.Key))
+		{
+			FMaterialGroup Group;
+			FToShaderHelpers::getMeshMaterials(Mesh,Group);
+			FToShaderHelpers::setMeshMaterials(Mesh,TagMeshMaterialWhenRendering[Element.Key]);
+			Saved.Emplace(Mesh,Group);
+			return;
+		}
+	}
+}
+
+void AMeshRendererPro::ResetMeshMaterialAfterRendering(UPrimitiveComponent* Mesh, TMap<UPrimitiveComponent*, FMaterialGroup> Saved)
+{
+	if (!Mesh) return;
+	if (!Saved.Contains(Mesh)) return;
+	FToShaderHelpers::setMeshMaterials(Mesh,Saved[Mesh].Materials);
+}
+
+void AMeshRendererPro::Setup()
+{
+	if (GetSubsystem())
+		GetSubsystem()->AddMeshRendererToSubsystem(this);
+}
+#pragma endregion
+
+
+
+
+
