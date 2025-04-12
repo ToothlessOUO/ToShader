@@ -1,12 +1,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "MeshRendererPass.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "ToShaderSubsystem.generated.h"
 
 class UToShaderComponent;
 class AMeshRenderer;
+class AScreenOverlayMeshManager;
 
 #pragma region structs enums
 USTRUCT(BlueprintType)
@@ -39,6 +39,7 @@ enum class ERendererTag : uint8
 {
 	EyeBrow,Face,Hair,
 	VisInCaptureOnly,HairMask,FaceMask,EyeBrowMask,
+	ScreenOverlay,
 	Max
 };
 
@@ -53,14 +54,7 @@ enum class ERTSizeScale : uint8
 
 ENUM_RANGE_BY_COUNT(ERendererTag, ERendererTag::Max);
 
-USTRUCT()
-struct FPassContainer
-{
-	GENERATED_BODY()
-	TSharedPtr<FMeshRendererPass, ESPMode::ThreadSafe> Pass;
-};
 #pragma endregion
-
 
 UCLASS()
 class TOSHADER_API UToShaderSubsystem : public UEngineSubsystem
@@ -80,28 +74,35 @@ public:
 	
 	static bool IsMeshContainsTag(UPrimitiveComponent* Mesh,ERendererTag Tag);
 
+	void CallUpdateMeshRenderers();
+
+	void SetScreenOverlayMeshManager(AScreenOverlayMeshManager* Manager);
+	UFUNCTION(BlueprintCallable,BlueprintPure)
+	void GetScreenOverlayMeshManager(bool& bSuccess,AScreenOverlayMeshManager* &RetManager);
+
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
 
 private:
+	TWeakObjectPtr<APlayerCameraManager> PlayerCameraManager  = nullptr;
 
-	bool bShouldUpdateShowLists = true;
-	UPROPERTY()
-	TArray<UToShaderComponent*> Modules;
-	UPROPERTY()
-	TArray<AMeshRenderer*> MeshRenderers;
-	UPROPERTY()
-	TMap<FName,FPassContainer> Passes;
-
+	void CheckModules();
+	TArray<TWeakObjectPtr<UToShaderComponent>> Modules;
+	
+	bool bShouldUpdateMeshRenderers = true;
+	TArray<TWeakObjectPtr<AMeshRenderer>> MeshRenderers;
 	void SetShowList(AMeshRenderer* MeshRenderer);
-	void SetShowLists();
-
+	void UpdateMeshRenderersShowLists();
+	
 	UPROPERTY()
 	TMap<ERendererTag,FName> TagNames;
 	bool GetTagName(ERendererTag Tag,FName& TagName);
 	void CacheTagNames();
+
+	TWeakObjectPtr<AScreenOverlayMeshManager> ScreenMeshManager;
+
 	
 	bool Tick(float DeltaTime);
 	FTSTicker::FDelegateHandle TickDelegateHandle;

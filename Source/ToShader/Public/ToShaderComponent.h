@@ -7,9 +7,28 @@
 #include "Components/ActorComponent.h"
 #include "ToShaderComponent.generated.h"
 
+#pragma region Interfaces
+// This class does not need to be modified.
+UINTERFACE()
+class UAlwaysTick : public UInterface
+{
+	GENERATED_BODY()
+};
 
+class TOSHADER_API IAlwaysTick
+{
+	GENERATED_BODY()
+
+	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
+public:
+	UFUNCTION(BlueprintNativeEvent)
+	void OnAlwaysTick(float Dt);
+};
+#pragma endregion
+
+#pragma region ToShaderComponent
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOSHADER_API UToShaderComponent : public UActorComponent
+class TOSHADER_API UToShaderComponent : public UActorComponent,public IAlwaysTick
 {
 	GENERATED_BODY()
 
@@ -23,7 +42,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
 	virtual void PostInitProperties() override;
 
 	void CollectTargetsAndCallSubsystem();
@@ -34,3 +52,24 @@ private:
 
 	
 };
+
+#pragma endregion
+
+#pragma region AlwaysTickComponent
+
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+class TOSHADER_API UToAlwaysTickComponent : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+	UToAlwaysTickComponent();
+protected:
+	virtual void PostInitProperties() override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+private:
+	bool bIsOwnerImplementInterface = false;
+};
+
+#pragma endregion

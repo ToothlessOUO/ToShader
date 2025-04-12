@@ -4,8 +4,6 @@
 #include "ToShader.h"
 #include "Components/SceneCaptureComponent2D.h"
 
-#define tolog FToShaderHelpers::log
-
 UToShaderSubsystem::UToShaderSubsystem()
 {
 }
@@ -15,9 +13,9 @@ TArray<TWeakObjectPtr<UPrimitiveComponent>> UToShaderSubsystem::GetShowList(ERen
 	TArray<TWeakObjectPtr<UPrimitiveComponent>> ShowList;
 	for (const auto M : Modules)
 	{
-		if (!M) continue;
+		if (!M.IsValid()) continue;
 		if (!M->RendererGroup.Contains(Tag)) continue;
-		for (auto G : M->RendererGroup[Tag].Components)
+		for (const auto G : M->RendererGroup[Tag].Components)
 		{
 			TWeakObjectPtr<UPrimitiveComponent> P = MakeWeakObjectPtr(G);
 			ShowList.Add(P);
@@ -43,26 +41,16 @@ void UToShaderSubsystem::AddModuleToSubsystem(UToShaderComponent* Module)
 	if (!Module) return;
 	if (! Modules.Contains(Module))
 		Modules.Add(Module);
-	bShouldUpdateShowLists = true;
+	CallUpdateMeshRenderers();
 }
 
 void UToShaderSubsystem::AddMeshRendererToSubsystem(AMeshRenderer* Actor)
 {
 	if (!Actor) return;
-	if (Actor->IsA(AMeshRendererPro::StaticClass()))
-	{
-		if (!Actor->GetWorld()) return;
-		const auto MeshRendererPro = Cast<AMeshRendererPro>(Actor);
-		if (MeshRendererPro->PassName.IsNone() || Passes.Contains(MeshRendererPro->PassName)) return;
-		FPassContainer NewPass;
-		NewPass.Pass = FSceneViewExtensions::NewExtension<FMeshRendererPass>(Actor->GetWorld());
-		Passes.Emplace(MeshRendererPro->PassName, NewPass);
-		MeshRendererPro->CallBackWhenAddToSubsystemSuccess(NewPass);
-	}
 	if (MeshRenderers.Contains(Actor)) return;
 
 	MeshRenderers.Add(Actor);
-	bShouldUpdateShowLists = true;
+	CallUpdateMeshRenderers();
 }
 
 UToShaderSubsystem* UToShaderSubsystem::GetSubsystem()
@@ -91,14 +79,38 @@ bool UToShaderSubsystem::IsMeshContainsTag(UPrimitiveComponent* Mesh, ERendererT
 	return false;
 }
 
+void UToShaderSubsystem::CallUpdateMeshRenderers()
+{
+	bShouldUpdateMeshRenderers = true;
+}
+
+void UToShaderSubsystem::SetScreenOverlayMeshManager(AScreenOverlayMeshManager* Manager)
+{
+	if (Manager == nullptr || ScreenMeshManager.IsValid()) return;
+	ScreenMeshManager = Manager;
+}
+
+void UToShaderSubsystem::GetScreenOverlayMeshManager(bool& bSuccess, AScreenOverlayMeshManager*& RetManager)
+{
+	if (!ScreenMeshManager.IsValid())
+	{
+		bSuccess = false;
+		RetManager = nullptr;
+		return;
+	}
+
+	bSuccess = true;
+	RetManager = ScreenMeshManager.Get();
+}
+
 
 void UToShaderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
 	TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &ThisClass::Tick));
-
 	
+	CacheTagNames();
 }
 
 void UToShaderSubsystem::Deinitialize()
@@ -107,21 +119,28 @@ void UToShaderSubsystem::Deinitialize()
 	FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 }
 
+void UToShaderSubsystem::CheckModules()
+{
+	int Temp = Modules.Num();
+	Modules.RemoveAll([](TWeakObjectPtr<UToShaderComponent> Module)
+	{
+		return !Module.IsValid();
+	});
+	if (Temp != Modules.Num()) CallUpdateMeshRenderers();
+}
+
 void UToShaderSubsystem::SetShowList(AMeshRenderer* MeshRenderer)
 {
 	MeshRenderer->SetShowList(GetShowList(MeshRenderer->TargetMeshTags.Array()));
 }
 
-void UToShaderSubsystem::SetShowLists()
+void UToShaderSubsystem::UpdateMeshRenderersShowLists()
 {
+	if (!bShouldUpdateMeshRenderers) return;
 	if (MeshRenderers.IsEmpty()) return;
-	Modules.RemoveAll([](UToShaderComponent* Module)
+	MeshRenderers.RemoveAll([](TWeakObjectPtr<AMeshRenderer> Renderer)
 	{
-		return Module == nullptr;
-	});
-	MeshRenderers.RemoveAll([](AMeshRenderer* Renderer)
-	{
-		return Renderer == nullptr;
+		return !Renderer.IsValid();
 	});
 	TMap<ERendererTag, FShowList> SavedList;
 	for (auto Renderer : MeshRenderers)
@@ -143,7 +162,7 @@ void UToShaderSubsystem::SetShowLists()
 		}
 		Renderer->SetShowList(CurList.List);
 	}
-	bShouldUpdateShowLists = false;
+	bShouldUpdateMeshRenderers = false;
 }
 
 bool UToShaderSubsystem::GetTagName(ERendererTag Tag, FName& TagName)
@@ -155,7 +174,7 @@ bool UToShaderSubsystem::GetTagName(ERendererTag Tag, FName& TagName)
 
 void UToShaderSubsystem::CacheTagNames()
 {
-	if (!TagNames.IsEmpty()) return;
+	//if (!TagNames.IsEmpty()) return;
 	const auto EnumPtr = StaticEnum<ERendererTag>();
 	if (!EnumPtr) return;
 	for (ERendererTag E : TEnumRange<ERendererTag>())
@@ -167,7 +186,7 @@ void UToShaderSubsystem::CacheTagNames()
 
 bool UToShaderSubsystem::Tick(float DeltaTime)
 {
-	CacheTagNames();
-	SetShowLists();
+	CheckModules();
+	UpdateMeshRenderersShowLists();
 	return true;
 }

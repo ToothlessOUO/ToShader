@@ -2,12 +2,15 @@
 
 #include "ToShaderSubsystem.h"
 #include "Modules/ModuleManager.h"
+#include "ToShader.generated.h"
 
 class FMeshRendererPass;
 DECLARE_LOG_CATEGORY_EXTERN(LogToShader, Log, All);
 
-class FToShaderHelpers
+UCLASS()
+class TOSHADER_API UToShaderHelpers : public UBlueprintFunctionLibrary
 {
+	GENERATED_BODY()
 	public:
 	static void log(FString msg);
 	static void log(FString msg,float i);
@@ -18,7 +21,26 @@ class FToShaderHelpers
 	static void setMeshMaterials(UPrimitiveComponent* mesh,UMaterialInterface* mat);
 	static void setMeshMaterials(UPrimitiveComponent* mesh,TArray<UMaterialInterface*> mats);
 	static int getRTSizeScale(ERTSizeScale scale);
+
+#if WITH_EDITOR
+	static FLevelEditorViewportClient* GetViewPortClient()
+	{
+		return	GCurrentLevelEditingViewportClient ? GCurrentLevelEditingViewportClient :
+			GLastKeyLevelEditingViewportClient ? GLastKeyLevelEditingViewportClient :
+			nullptr;
+	}
+#endif
+	UFUNCTION(BlueprintCallable,BlueprintPure)
+	static FTransform getMainCameraTransform();
+
+	UFUNCTION(BlueprintCallable,Category="ToShader",meta=(ToolTip="将该Mesh的所有材质设置为新的材质，并返回Mesh原来的材质"))
+	static TArray<UMaterialInterface*> SetMeshMaterial(UPrimitiveComponent* Mesh,UMaterialInterface* NewMat);
+	UFUNCTION(BlueprintCallable,Category="ToShader",meta=(ToolTip="将该Mesh的材质按照数组进行设置"))
+	static void SetMeshMaterials(UPrimitiveComponent* Mesh,TArray<UMaterialInterface*> NewMats);
+
 };
+
+#define tolog UToShaderHelpers::log
 
 class FToShaderModule : public IModuleInterface
 {
@@ -36,3 +58,5 @@ public:
 	FTSTicker::FDelegateHandle TickDelegateHandle;
 	bool Tick(float DeltaTime);
 };
+
+

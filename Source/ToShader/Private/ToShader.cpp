@@ -4,20 +4,21 @@
 #include "ToShaderSubsystem.h"
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
+#include "Editor.h"
+#include "LevelEditorViewport.h"
+#include "Slate/SceneViewport.h"
 
 DEFINE_LOG_CATEGORY(LogToShader);
 
 #define LOCTEXT_NAMESPACE "FToShaderModule"
 
-#define tolog FToShaderHelpers::log
-
 #pragma region ToShaderHelpers
-void FToShaderHelpers::log(FString msg)
+void UToShaderHelpers::log(FString msg)
 {
 	UE_LOG(LogToShader, Warning, TEXT("%s"), *msg);
 }
 
-void FToShaderHelpers::log(FString msg, int b, bool printAsBool)
+void UToShaderHelpers::log(FString msg, int b, bool printAsBool)
 {
 	if (printAsBool)
 	{
@@ -32,19 +33,19 @@ void FToShaderHelpers::log(FString msg, int b, bool printAsBool)
 	log(msg);
 }
 
-void FToShaderHelpers::log(FString msg, FName i)
+void UToShaderHelpers::log(FString msg, FName i)
 {
 	msg+=i.ToString();
 	log(msg);
 }
 
-void FToShaderHelpers::log(FString msg, float i)
+void UToShaderHelpers::log(FString msg, float i)
 {
 	msg += FString::SanitizeFloat(i);
 	log(msg);
 }
 
-void FToShaderHelpers::modifyConifg(FString path, FString section, TMap<FString,FString> key_val)
+void UToShaderHelpers::modifyConifg(FString path, FString section, TMap<FString,FString> key_val)
 {
 	FConfigFile ConfigFile;
 	ConfigFile.Read(path);
@@ -68,7 +69,7 @@ void FToShaderHelpers::modifyConifg(FString path, FString section, TMap<FString,
 	tolog("update success "+ path);
 }
 
-void FToShaderHelpers::getMeshMaterials(UPrimitiveComponent* mesh,FMaterialGroup& outMaterials)
+void UToShaderHelpers::getMeshMaterials(UPrimitiveComponent* mesh,FMaterialGroup& outMaterials)
 {
 	for (int i=0;i<mesh->GetNumMaterials();i++)
 	{
@@ -76,7 +77,7 @@ void FToShaderHelpers::getMeshMaterials(UPrimitiveComponent* mesh,FMaterialGroup
 	}
 }
 
-void FToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, UMaterialInterface* mat)
+void UToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, UMaterialInterface* mat)
 {
 	if (mesh == nullptr || mat == nullptr) return;
 	for (int i=0;i<mesh->GetNumMaterials();i++)
@@ -85,7 +86,7 @@ void FToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, UMaterialInte
 	}
 }
 
-void FToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, TArray<UMaterialInterface*> mats)
+void UToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, TArray<UMaterialInterface*> mats)
 {
 	if (mats.Num() < mesh->GetNumMaterials()) return;
 	for (int i=0;i<mesh->GetNumMaterials();i++)
@@ -94,10 +95,63 @@ void FToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, TArray<UMater
 	}
 }
 
-int FToShaderHelpers::getRTSizeScale(ERTSizeScale scale)
+int UToShaderHelpers::getRTSizeScale(ERTSizeScale scale)
 {
 	if (scale == ERTSizeScale::Default) return 1;
 	return static_cast<int>(scale);
+}
+
+FTransform UToShaderHelpers::getMainCameraTransform()
+{
+#if WITH_EDITOR
+	if (!GEditor->PlayWorld)
+	{
+		if (FLevelEditorViewportClient* Client = GetViewPortClient())
+		{ 
+			FRotator ViewportRotation(0, 0, 0);
+			FVector ViewportLocation(0, 0, 0);
+		
+			if (!Client->IsOrtho())
+			{
+				ViewportRotation = Client->GetViewRotation();
+			}
+
+			ViewportLocation = Client->GetViewLocation();
+			return FTransform(ViewportRotation, ViewportLocation, FVector::OneVector);
+		}
+		return FTransform();
+	}
+	if (GEditor->PlayWorld->GetFirstPlayerController())
+	{
+		if (GEditor->PlayWorld->GetFirstPlayerController()->PlayerCameraManager)
+		{
+			//cameraManager = GEditor->PlayWorld->GetFirstPlayerController()->PlayerCameraManager;
+			return GEditor->PlayWorld->GetFirstPlayerController()->PlayerCameraManager->GetTransform();
+		}
+	}
+	return FTransform();
+#endif
+}
+
+TArray<UMaterialInterface*> UToShaderHelpers::SetMeshMaterial(UPrimitiveComponent* Mesh, UMaterialInterface* NewMat)
+{
+	if (!Mesh || !NewMat) return {};
+	TArray<UMaterialInterface*> RetMaterials;
+	for (int i=0;i<Mesh->GetNumMaterials();i++)
+	{
+		RetMaterials.Add(Mesh->GetMaterial(i));
+		Mesh->SetMaterial(i,NewMat);
+	}
+	return RetMaterials;
+}
+
+void UToShaderHelpers::SetMeshMaterials(UPrimitiveComponent* Mesh, TArray<UMaterialInterface*> NewMats)
+{
+	if (!Mesh || NewMats.IsEmpty() || NewMats.Num()<Mesh->GetNumMaterials()) return;
+	for (int i=0;i<Mesh->GetNumMaterials();i++)
+	{
+		Mesh->SetMaterial(i,NewMats[i]);
+	}
 }
 
 #pragma endregion
@@ -129,7 +183,7 @@ void FToShaderModule::ApplyEngineConfigs()
 	ConfigKV.Emplace("r.Nanite.Tessellation","1");
 	ConfigKV.Emplace("r.VirtualTextures","False");
 	ConfigKV.Emplace("r.DistanceFieldAO","0");
-	FToShaderHelpers::modifyConifg(ConfigPath,Section,ConfigKV);
+	UToShaderHelpers::modifyConifg(ConfigPath,Section,ConfigKV);
 }
 
 bool FToShaderModule::Tick(float DeltaTime)

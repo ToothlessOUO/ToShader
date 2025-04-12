@@ -1,17 +1,34 @@
 #include "MeshRenderer.h"
-
 #include "ToShader.h"
 #include "ToShaderSubsystem.h"
 #include "Components/SceneCaptureComponent2D.h"
 
-#define tolog FToShaderHelpers::log
-
 #pragma region MeshRenderer
 AMeshRenderer::AMeshRenderer()
 {
+
 	PrimaryActorTick.bCanEverTick = false;
 	PrimaryActorTick.bStartWithTickEnabled = false;
+	if (bShouldFollowTheView)
+	{
+		PrimaryActorTick.bCanEverTick = true;
+		PrimaryActorTick.bStartWithTickEnabled = true;
+		SetTickGroup(TG_PostUpdateWork);
+	}
+}
 
+TArray<UPrimitiveComponent*> AMeshRenderer::GetShowList()
+{
+	if (Captures.IsEmpty()) return {};
+	TArray<UPrimitiveComponent*> ShowList;
+	for (auto Ele : Captures[0]->ShowOnlyComponents)
+	{
+		if (Ele.IsValid())
+		{
+			ShowList.Add(Ele.Get());
+		}
+	}
+	return ShowList;
 }
 
 void AMeshRenderer::SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList)
@@ -36,6 +53,8 @@ void AMeshRenderer::OnConstruction(const FTransform& Transform)
 void AMeshRenderer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	UpdateTransform();
 }
 
 void AMeshRenderer::Setup()
@@ -60,61 +79,100 @@ UToShaderSubsystem* AMeshRenderer::GetSubsystem()
 	return GEngine->GetEngineSubsystem<UToShaderSubsystem>();
 }
 
+void AMeshRenderer::UpdateTransform()
+{
+	if (bShouldFollowTheView)
+	{
+		auto T = UToShaderHelpers::getMainCameraTransform();
+		T.SetScale3D(FVector(1.f, 1.f, 1.f));
+		SetActorTransform(T);
+	}
+}
 #pragma endregion
 
-#pragma region MeshRenderer Pro
+#pragma region ScreenOverlayMesh Renderer
 
-AMeshRendererPro::AMeshRendererPro()
+AScreenOverlayMesh::AScreenOverlayMesh()
 {
+	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
-void AMeshRendererPro::SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList)
+void AScreenOverlayMesh::BeginPlay()
 {
-	//更新 pass mesh
-	if (!TargetPass.Pass.IsValid())
+	Super::BeginPlay();
+
+	for (auto L = K2_GetComponentsByClass(UStaticMeshComponent::StaticClass());
+		const auto C : L)
 	{
-		Setup();
-		return;
+		Meshes.Add(Cast<UStaticMeshComponent>(C));
 	}
-	TargetPass.Pass->ShowList = NewList;
 }
 
-void AMeshRendererPro::CallBackWhenAddToSubsystemSuccess(FPassContainer Pass)
+void AScreenOverlayMesh::SetEnabled_Implementation(bool bEnabled)
 {
-	Pass.Pass->Setup(this);
-	TargetPass = Pass;
-}
-
-void AMeshRendererPro::SaveMeshMaterialWhenRendering(UPrimitiveComponent* Mesh, TMap<UPrimitiveComponent*, FMaterialGroup>& Saved)
-{
-	if (!Mesh) return;
-	if (TagMeshMaterialWhenRendering.IsEmpty()) return;
-	for (const auto Element : TagMeshMaterialWhenRendering)
+	for (auto Element : Meshes)
 	{
-		if (UToShaderSubsystem::IsMeshContainsTag(Mesh, Element.Key))
+		Element->SetHiddenInGame(bEnabled);
+	}
+}
+
+void AScreenOverlayMeshManager::SetScreenOverlayMeshEnabled(const TSubclassOf<AScreenOverlayMesh> Type,bool bE)
+{
+	for (auto Element : Meshes)
+	{
+		if (Element == Type)
 		{
-			FMaterialGroup Group;
-			FToShaderHelpers::getMeshMaterials(Mesh,Group);
-			FToShaderHelpers::setMeshMaterials(Mesh,TagMeshMaterialWhenRendering[Element.Key]);
-			Saved.Emplace(Mesh,Group);
+			Element.Mesh->SetEnabled(bE);
 			return;
 		}
 	}
 }
 
-void AMeshRendererPro::ResetMeshMaterialAfterRendering(UPrimitiveComponent* Mesh, TMap<UPrimitiveComponent*, FMaterialGroup> Saved)
+AScreenOverlayMeshManager::AScreenOverlayMeshManager()
 {
-	if (!Mesh) return;
-	if (!Saved.Contains(Mesh)) return;
-	FToShaderHelpers::setMeshMaterials(Mesh,Saved[Mesh].Materials);
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
+	SetTickGroup(TG_PostUpdateWork);
 }
 
-void AMeshRendererPro::Setup()
+void AScreenOverlayMeshManager::OnConstruction(const FTransform& Transform)
 {
-	if (GetSubsystem())
-		GetSubsystem()->AddMeshRendererToSubsystem(this);
+	Super::OnConstruction(Transform);
+
+	UToShaderSubsystem::GetSubsystem()->SetScreenOverlayMeshManager(this);
 }
+
+void AScreenOverlayMeshManager::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (!GetWorld()) return;
+	
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	const FTransform SpawnTransform = GetTransform();
+	for (auto [bEnabled, Mesh] : Meshes)
+	{
+		if (!Mesh) continue;
+		AScreenOverlayMesh* NewMesh = GetWorld()->SpawnActor<AScreenOverlayMesh>(Mesh->GetClass(), SpawnTransform, SpawnParams);
+		NewMesh->AttachToActor(this,FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		Mesh = NewMesh;
+		Mesh->SetEnabled(bEnabled);
+	}
+}
+
+void AScreenOverlayMeshManager::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	auto T = UToShaderHelpers::getMainCameraTransform();
+	T.SetScale3D(FVector(1.f, 1.f, 1.f));
+	SetActorTransform(T);
+}
+
 #pragma endregion
+
 
 
 

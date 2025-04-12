@@ -1,9 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "SceneViewExtension.h"
-#include "GameFramework/Actor.h"
 #include "ToShaderSubsystem.h"
+#include "GameFramework/Actor.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "MeshRenderer.generated.h"
 
@@ -14,12 +13,18 @@ class TOSHADER_API AMeshRenderer : public AActor
 
 public:
 	AMeshRenderer();
-
+	
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="MeshRenderer")
 	TSet<ERendererTag> TargetMeshTags;
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="MeshRenderer",
+		meta=(ToolTip="开启后默认会启用actor tick，其他情况下使用也需要确保tick开启"))
+	bool bShouldFollowTheView = false;
 
 	UPROPERTY(BlueprintReadOnly)
 	TArray<USceneCaptureComponent2D*> Captures;
+	
+	UFUNCTION(BlueprintCallable,BlueprintPure)
+	TArray<UPrimitiveComponent*> GetShowList();
 	
 	virtual void SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList);
 
@@ -31,36 +36,70 @@ protected:
 	virtual void Setup();
 
 	UToShaderSubsystem* GetSubsystem();
+	void UpdateTransform();
 };
 
 
 UCLASS()
-class TOSHADER_API AMeshRendererPro : public AMeshRenderer
+class TOSHADER_API AScreenOverlayMesh : public AActor
 {
 	GENERATED_BODY()
-
 public:
-	AMeshRendererPro();
-	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="MeshRenderer|Pro")
-	FName PassName = FName();
-	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="MeshRenderer|Pro")
-	UTextureRenderTarget2D* OutputRT = nullptr;
-	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="MeshRenderer|Pro")
-	ERTSizeScale RTScale;
-	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="MeshRenderer|Pro")
-	TMap<ERendererTag,UMaterialInterface*> TagMeshMaterialWhenRendering;
+	AScreenOverlayMesh();
 
-	virtual void SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList) override;
+	UFUNCTION(BlueprintCallable,BlueprintNativeEvent)
+	void SetEnabled(bool bEnabled);
 
-	void CallBackWhenAddToSubsystemSuccess(FPassContainer Pass);
+	protected:
+	virtual void BeginPlay() override;
+	UPROPERTY()
+	TArray<UStaticMeshComponent*> Meshes;
+	
+};
+USTRUCT(BlueprintType)
+struct FScreenOverlayMeshParam
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadWrite,VisibleAnywhere)
+	bool bEnabled;
+	UPROPERTY(BlueprintReadWrite,VisibleAnywhere)
+	AScreenOverlayMesh* Mesh;
 
-	//返回mesh的tag在TagMeshMaterialWhenRendering中的值，当其中不存在mesh的tag时bIsMeshTagValid为false
-	void SaveMeshMaterialWhenRendering(UPrimitiveComponent* Mesh,TMap<UPrimitiveComponent*,FMaterialGroup>& Saved);
-	void ResetMeshMaterialAfterRendering(UPrimitiveComponent* Mesh,TMap<UPrimitiveComponent*,FMaterialGroup> Saved);
+	bool operator==(const FScreenOverlayMeshParam& InParam) const
+	{
+		return this->Mesh == InParam.Mesh;
+	}
+
+	bool operator==(const TSubclassOf<AScreenOverlayMesh>& Type) const
+	{
+		if (!Mesh) return false;
+		return Mesh->GetClass() == Type;
+	}
+
+	friend uint32 GetTypeHash(const FScreenOverlayMeshParam& MyStruct)
+	{
+		return GetTypeHash(MyStruct.Mesh);
+	}
+};
+UCLASS()
+class TOSHADER_API AScreenOverlayMeshManager : public AActor
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditDefaultsOnly,Category="ScreenOverlayMeshManager")
+	TSet<FScreenOverlayMeshParam> Meshes;
+
+	UFUNCTION(BlueprintCallable)
+	void SetScreenOverlayMeshEnabled(TSubclassOf<AScreenOverlayMesh> Type,bool bE);
+	
+	AScreenOverlayMeshManager();
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 protected:
-	virtual void Setup() override;
-	
-	FPassContainer TargetPass;
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 };
+
+
+
 

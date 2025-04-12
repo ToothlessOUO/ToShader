@@ -2,8 +2,7 @@
 
 #include "ToShader.h"
 
-#define tolog FToShaderHelpers::log
-
+#pragma region ToShaderComponent
 UToShaderComponent::UToShaderComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -57,10 +56,41 @@ void UToShaderComponent::CollectTargetsAndCallSubsystem()
 	GetSubsystem()->AddModuleToSubsystem(this);
 }
 
-
 void UToShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 }
+
+#pragma endregion
+
+#pragma region AlwaysTickComponent
+
+UToAlwaysTickComponent::UToAlwaysTickComponent()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	bTickInEditor = true;
+	PrimaryComponentTick.SetTickFunctionEnable(true);
+}
+
+void UToAlwaysTickComponent::PostInitProperties()
+{
+	Super::PostInitProperties();
+	if (GetOwner() && GetOwner()->GetClass()->ImplementsInterface(UAlwaysTick::StaticClass()))
+	{
+		bIsOwnerImplementInterface = true;
+	}
+}
+
+void UToAlwaysTickComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (bIsOwnerImplementInterface)
+	{
+		IAlwaysTick::Execute_OnAlwaysTick(GetOwner(), DeltaTime);
+		//tolog("AlwaysTickComponent::TickComponent");
+	}
+}
+
+#pragma endregion AlwaysTickComponent
 
