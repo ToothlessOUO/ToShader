@@ -42,11 +42,13 @@ void AMeshRenderer::SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewL
 void AMeshRenderer::BeginPlay()
 {
 	Super::BeginPlay();
+	Setup();
 }
 
 void AMeshRenderer::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
+	tolog("OnConstruction");
 	Setup();
 }
 
@@ -69,6 +71,7 @@ void AMeshRenderer::Setup()
 		Capture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
 		Captures.Add(Capture);
 	}
+	//收集并注册至子系统
 	if (GetSubsystem())
 		GetSubsystem()->AddMeshRendererToSubsystem(this);
 }

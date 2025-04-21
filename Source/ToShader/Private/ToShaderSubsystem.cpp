@@ -1,8 +1,6 @@
 #include "ToShaderSubsystem.h"
 #include "ToShaderComponent.h"
 #include "MeshRenderer.h"
-#include "ToShader.h"
-#include "Components/SceneCaptureComponent2D.h"
 
 UToShaderSubsystem::UToShaderSubsystem()
 {
@@ -44,6 +42,15 @@ void UToShaderSubsystem::AddModuleToSubsystem(UToShaderComponent* Module)
 	CallUpdateMeshRenderers();
 }
 
+void UToShaderSubsystem::RemoveModuleFromSubsystem(UToShaderComponent* Module)
+{
+	if (!Module) return;
+	if (Modules.Contains(Module))
+		Modules.Remove(Module);
+	CallUpdateMeshRenderers();
+}
+
+
 void UToShaderSubsystem::AddMeshRendererToSubsystem(AMeshRenderer* Actor)
 {
 	if (!Actor) return;
@@ -79,6 +86,7 @@ bool UToShaderSubsystem::IsMeshContainsTag(UPrimitiveComponent* Mesh, ERendererT
 	return false;
 }
 
+//调用后更新所有MeshRenderer
 void UToShaderSubsystem::CallUpdateMeshRenderers()
 {
 	bShouldUpdateMeshRenderers = true;
@@ -117,16 +125,6 @@ void UToShaderSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
 	FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
-}
-
-void UToShaderSubsystem::CheckModules()
-{
-	int Temp = Modules.Num();
-	Modules.RemoveAll([](TWeakObjectPtr<UToShaderComponent> Module)
-	{
-		return !Module.IsValid();
-	});
-	if (Temp != Modules.Num()) CallUpdateMeshRenderers();
 }
 
 void UToShaderSubsystem::SetShowList(AMeshRenderer* MeshRenderer)
@@ -186,7 +184,6 @@ void UToShaderSubsystem::CacheTagNames()
 
 bool UToShaderSubsystem::Tick(float DeltaTime)
 {
-	CheckModules();
 	UpdateMeshRenderersShowLists();
 	return true;
 }

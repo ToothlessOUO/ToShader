@@ -68,6 +68,7 @@ public:
 	TArray<TWeakObjectPtr<UPrimitiveComponent>> GetShowList(TArray<ERendererTag> Tags);
 	
 	void AddModuleToSubsystem(UToShaderComponent* Module);
+	void RemoveModuleFromSubsystem(UToShaderComponent* Module);
 	void AddMeshRendererToSubsystem(AMeshRenderer* Actor);
 
 	static UToShaderSubsystem* GetSubsystem();
@@ -87,8 +88,7 @@ protected:
 
 private:
 	TWeakObjectPtr<APlayerCameraManager> PlayerCameraManager  = nullptr;
-
-	void CheckModules();
+	
 	TArray<TWeakObjectPtr<UToShaderComponent>> Modules;
 	
 	bool bShouldUpdateMeshRenderers = true;

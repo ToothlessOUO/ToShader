@@ -12,13 +12,19 @@ UToShaderComponent::UToShaderComponent()
 void UToShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	CollectTargetsAndCallSubsystem();
 }
 
 void UToShaderComponent::PostInitProperties()
 {
 	Super::PostInitProperties();
 	CollectTargetsAndCallSubsystem();
+}
+
+void UToShaderComponent::DestroyComponent(bool bPromoteChildren)
+{
+	Super::DestroyComponent(bPromoteChildren);
+	GetSubsystem()->RemoveModuleFromSubsystem(this);
 }
 
 UToShaderSubsystem* UToShaderComponent::GetSubsystem()
@@ -45,8 +51,6 @@ void UToShaderComponent::CollectTargetsAndCallSubsystem()
 		{
 			if (auto P = Cast<UPrimitiveComponent>(Component))
 			{
-				// if (UToShaderSubsystem::IsMeshContainsTag(P,ERendererTag::VisInCaptureOnly))
-				// 	P->bVisibleInSceneCaptureOnly = true;
 				Group.Components.Add(P);
 			}
 		}
