@@ -1,6 +1,8 @@
 #include "ToShaderSubsystem.h"
+#include "MaterialEffect.h"
 #include "ToShaderComponent.h"
 #include "MeshRenderer.h"
+#include "ToShader.h"
 
 UToShaderSubsystem::UToShaderSubsystem()
 {
@@ -37,7 +39,7 @@ TArray<TWeakObjectPtr<UPrimitiveComponent>> UToShaderSubsystem::GetShowList(TArr
 void UToShaderSubsystem::AddModuleToSubsystem(UToShaderComponent* Module)
 {
 	if (!Module) return;
-	if (! Modules.Contains(Module))
+	if (!Modules.Contains(Module))
 		Modules.Add(Module);
 	CallUpdateMeshRenderers();
 }
@@ -75,7 +77,7 @@ bool UToShaderSubsystem::IsMeshContainsTag(UPrimitiveComponent* Mesh, ERendererT
 	const auto S = GetSubsystem();
 	if (!S) return false;
 	FName TagName;
-	if (!S->GetTagName(Tag,TagName)) return false;
+	if (!S->GetTagName(Tag, TagName)) return false;
 	for (auto Element : Mesh->ComponentTags)
 	{
 		if (Element == TagName)
@@ -111,12 +113,53 @@ void UToShaderSubsystem::GetScreenOverlayMeshManager(bool& bSuccess, AScreenOver
 	RetManager = ScreenMeshManager.Get();
 }
 
+void UToShaderSubsystem::CallUpdate_MaterialEffectPropertyTable()
+{
+	MaterialEffectPropertyTable = nullptr;
+}
+
+TArray<FName> UToShaderSubsystem::GetMaterialEffectPropertyTableRowNames(EMPType Type)
+{
+	if (!MaterialEffectPropertyTable.IsValid()) return TArray<FName>();
+	TArray<FName> RetArray;
+
+	switch (Type)
+	{
+	case EMPType::Key:
+		for (auto Data : MPKeyCache)
+		{
+			RetArray.Emplace(Data.RowName);
+		}
+		break;
+	case EMPType::Float:
+		for (auto Data : MPFloatCache)
+		{
+			RetArray.Emplace(Data.RowName);
+		}
+		break;
+	case EMPType::Float4:
+		for (auto Data : MPFloat4Cache)
+		{
+			RetArray.Emplace(Data.RowName);
+		}
+		break;
+	case EMPType::Texture:
+		for (auto Data : MPTextureCache)
+		{
+			RetArray.Emplace(Data.RowName);
+		}
+		break;
+	}
+
+	return RetArray;
+}
+
 void UToShaderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	
+
 	TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &ThisClass::Tick));
-	
+
 	CacheTagNames();
 }
 
@@ -144,13 +187,14 @@ void UToShaderSubsystem::UpdateMeshRenderersShowLists()
 	{
 		FShowList CurList;
 		if (Renderer->TargetMeshTags.IsEmpty()) continue;
-		
+
 		for (ERendererTag Tag : Renderer->TargetMeshTags)
 		{
 			if (SavedList.Contains(Tag))
 			{
 				CurList.List.Append(SavedList[Tag].List);
-			}else
+			}
+			else
 			{
 				auto NewList = GetShowList(Tag);
 				CurList.List.Append(NewList);
@@ -177,12 +221,56 @@ void UToShaderSubsystem::CacheTagNames()
 	for (ERendererTag E : TEnumRange<ERendererTag>())
 	{
 		const auto TagName = FName(EnumPtr->GetNameStringByValue(static_cast<int64>(E)));
-		TagNames.Emplace(E,TagName);
+		TagNames.Emplace(E, TagName);
+	}
+}
+
+void UToShaderSubsystem::UpdateMaterialEffectPropertyTable()
+{
+	if (MaterialEffectPropertyTable.IsValid()) return;
+	const FString DataTablePath = TEXT("/ToShader/DataTable/DT_MaterialEffectProperty.DT_MaterialEffectProperty");
+	UDataTable* Table = LoadObject<UDataTable>(nullptr, *DataTablePath);
+	if (!Table)
+	{
+		tolog("Material effect table not found in /ToShader/DataTable/DT_MaterialEffectProperty.DT_MaterialEffectProperty");
+		return;
+	}
+
+	MaterialEffectPropertyTable = Table;
+
+	// 获取RowMap的const引用
+	const TMap<FName, uint8*>& RowMap = MaterialEffectPropertyTable.Get()->GetRowMap();
+
+	MPKeyCache.Empty();
+	MPFloatCache.Empty();
+	MPFloat4Cache.Empty();
+	MPTextureCache.Empty();
+	// 遍历RowMap
+	for (const auto& Pair : RowMap)
+	{
+		FName RowName = Pair.Key;
+		FMPTableProp* RowData = reinterpret_cast<FMPTableProp*>(Pair.Value);
+		switch (RowData->Type)
+		{
+		case EMPType::Key:
+			MPKeyCache.Add({RowName, RowData});
+			break;
+		case EMPType::Float:
+			MPFloatCache.Add({RowName, RowData});
+			break;
+		case EMPType::Float4:
+			MPFloat4Cache.Add({RowName, RowData});
+			break;
+		case EMPType::Texture:
+			MPTextureCache.Add({RowName, RowData});
+			break;
+		}
 	}
 }
 
 bool UToShaderSubsystem::Tick(float DeltaTime)
 {
 	UpdateMeshRenderersShowLists();
+	UpdateMaterialEffectPropertyTable();
 	return true;
 }

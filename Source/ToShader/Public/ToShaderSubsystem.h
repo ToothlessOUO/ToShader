@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MaterialEffect.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "ToShaderSubsystem.generated.h"
 
@@ -78,8 +79,12 @@ public:
 	void CallUpdateMeshRenderers();
 
 	void SetScreenOverlayMeshManager(AScreenOverlayMeshManager* Manager);
+	
 	UFUNCTION(BlueprintCallable,BlueprintPure)
 	void GetScreenOverlayMeshManager(bool& bSuccess,AScreenOverlayMeshManager* &RetManager);
+
+	void CallUpdate_MaterialEffectPropertyTable();
+	TArray<FName> GetMaterialEffectPropertyTableRowNames(EMPType Type);
 
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
@@ -102,6 +107,14 @@ private:
 	void CacheTagNames();
 
 	TWeakObjectPtr<AScreenOverlayMeshManager> ScreenMeshManager;
+	
+	TArray<FMPTableRow> MPKeyCache;
+	TArray<FMPTableRow> MPFloatCache;
+	TArray<FMPTableRow> MPFloat4Cache;
+	TArray<FMPTableRow> MPTextureCache;
+	UPROPERTY()
+	TWeakObjectPtr<UDataTable> MaterialEffectPropertyTable;
+	void UpdateMaterialEffectPropertyTable();
 
 	
 	bool Tick(float DeltaTime);
