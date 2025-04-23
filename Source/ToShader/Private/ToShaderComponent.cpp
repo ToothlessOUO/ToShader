@@ -8,17 +8,18 @@ UToShaderComponent::UToShaderComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
-
+//Game & PIE
 void UToShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	CollectTargetsAndCallSubsystem();
+	Init();
 }
 
+//Editor
 void UToShaderComponent::PostInitProperties()
 {
 	Super::PostInitProperties();
-	CollectTargetsAndCallSubsystem();
+	Init();
 }
 
 void UToShaderComponent::DestroyComponent(bool bPromoteChildren)
@@ -32,30 +33,46 @@ UToShaderSubsystem* UToShaderComponent::GetSubsystem()
 	return UToShaderSubsystem::GetSubsystem();
 }
 
+void UToShaderComponent::Init()
+{
+	CacheMeshTags();
+	CollectTargetsAndCallSubsystem();
+}
+
+void UToShaderComponent::CacheMeshTags()
+{
+	Meshes.Components.Empty();
+	MeshTags.Empty();
+	
+	if(!GetOwner()) return;
+	TArray<UPrimitiveComponent*> M;
+	GetOwner()->GetComponents<UPrimitiveComponent>(M);
+	for (auto Element : M)
+	{
+		if(!Element) continue;
+		Meshes.Components.Emplace(Element);
+		for (auto Tag : Element->ComponentTags)
+		{
+			if(!MeshTags.Contains(Tag))
+			{
+				MeshTags.Emplace(Tag);
+			}
+			MeshTags[Tag].Components.Emplace(Element);
+		}
+	}
+}
+
 void UToShaderComponent::CollectTargetsAndCallSubsystem()
 {
-	if (!GetOwner() || !GetSubsystem()) return;
+	if (!GetOwner() || !GetSubsystem() || MeshTags.IsEmpty()) return;
 	RendererGroup.Empty();
 	const auto EnumPtr = StaticEnum<ERendererTag>();
 	if (!EnumPtr) return;
 	for (ERendererTag E : TEnumRange<ERendererTag>())
 	{
 		const auto TagName = FName(EnumPtr->GetNameStringByValue(static_cast<int64>(E)));
-		auto Components = GetOwner()->GetComponentsByTag(UPrimitiveComponent::StaticClass(),TagName);
-		if (Components.IsEmpty())
-		{
-			continue;
-		}
-		FMeshGroup Group;   
-		for (const auto Component : Components)
-		{
-			if (auto P = Cast<UPrimitiveComponent>(Component))
-			{
-				Group.Components.Add(P);
-			}
-		}
-		if (Group.Components.IsEmpty()) continue;
-		RendererGroup.Emplace(E, Group);
+		if(!MeshTags.Contains(TagName)) continue;
+		RendererGroup.Emplace(E, MeshTags[TagName]);
 	}
 	GetSubsystem()->AddModuleToSubsystem(this);
 }

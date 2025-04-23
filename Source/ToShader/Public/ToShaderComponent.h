@@ -26,70 +26,9 @@ public:
 };
 #pragma endregion
 
-#pragma region MaterialEffect
-
-USTRUCT(BlueprintType)
-struct FMaterialParamKey
-{
-	GENERATED_BODY()
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	FString Name;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	bool bIsEnabled;
-};
-
-USTRUCT(BlueprintType)
-struct FMaterialParamFloat
-{
-	GENERATED_BODY()
-	UPROPERTY(EditDefaultsOnly)
-	FString Name;
-	UPROPERTY(EditDefaultsOnly)
-	float Val;
-};
-
-USTRUCT(BlueprintType)
-struct FMaterialParamFloat4
-{
-	GENERATED_BODY()
-	UPROPERTY(EditDefaultsOnly)
-	FString Name;
-	UPROPERTY(EditDefaultsOnly)
-	FVector4 Val;
-};
-
-USTRUCT(BlueprintType)
-struct FMaterialParamTexture
-{
-	GENERATED_BODY()
-	UPROPERTY(EditDefaultsOnly)
-	FString Name;
-	UPROPERTY(EditDefaultsOnly)
-	UTexture* Tex = nullptr;
-};
-
-UCLASS()
-class TOSHADER_API UEffectData : public UDataAsset{
-	GENERATED_BODY()
-
-public:
-
-	UPROPERTY(EditDefaultsOnly)
-	FName EffectName;
-	UPROPERTY(EditDefaultsOnly)
-	TArray<FMaterialParamKey>		KeyParams;
-	UPROPERTY(EditDefaultsOnly)
-	TArray<FMaterialParamFloat>		FloatParams;
-	UPROPERTY(EditDefaultsOnly)
-	TArray<FMaterialParamFloat4>	Float4Params;
-	UPROPERTY(EditDefaultsOnly)
-	TArray<FMaterialParamTexture>	TextureParams;
-};
-#pragma endregion
-
 #pragma region ToShaderComponent
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class TOSHADER_API UToShaderComponent : public UActorComponent,public IAlwaysTick
+UCLASS(ClassGroup=(Custom),BlueprintType,Blueprintable, meta=(BlueprintSpawnableComponent))
+class TOSHADER_API UToShaderComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -105,14 +44,17 @@ protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void PostInitProperties() override;
 	virtual void DestroyComponent(bool bPromoteChildren = false) override;
-	
-	void CollectTargetsAndCallSubsystem();
-	
 
 private:
 	UToShaderSubsystem* GetSubsystem();
 
-	
+	void Init();
+
+	FMeshGroup Meshes;
+	TMap<FName,FMeshGroup> MeshTags;
+	void CacheMeshTags();
+
+	void CollectTargetsAndCallSubsystem();
 };
 
 #pragma endregion

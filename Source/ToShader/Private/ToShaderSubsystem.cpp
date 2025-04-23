@@ -111,7 +111,6 @@ void UToShaderSubsystem::GetScreenOverlayMeshManager(bool& bSuccess, AScreenOver
 	RetManager = ScreenMeshManager.Get();
 }
 
-
 void UToShaderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
