@@ -85,6 +85,7 @@ public:
 
 	void CallUpdate_MaterialEffectPropertyTable();
 	TArray<FName> GetMaterialEffectPropertyTableRowNames(EMPType Type);
+	FMPTableProp* GetMP(FName Name,EMPType Type);
 
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
@@ -108,10 +109,10 @@ private:
 
 	TWeakObjectPtr<AScreenOverlayMeshManager> ScreenMeshManager;
 	
-	TArray<FMPTableRow> MPKeyCache;
-	TArray<FMPTableRow> MPFloatCache;
-	TArray<FMPTableRow> MPFloat4Cache;
-	TArray<FMPTableRow> MPTextureCache;
+	TMap<FName,FMPTableProp*> MPKeyCache;
+	TMap<FName,FMPTableProp*> MPFloatCache;
+	TMap<FName,FMPTableProp*> MPFloat4Cache;
+	TMap<FName,FMPTableProp*> MPTextureCache;
 	UPROPERTY()
 	TWeakObjectPtr<UDataTable> MaterialEffectPropertyTable;
 	void UpdateMaterialEffectPropertyTable();

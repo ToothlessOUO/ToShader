@@ -128,30 +128,53 @@ TArray<FName> UToShaderSubsystem::GetMaterialEffectPropertyTableRowNames(EMPType
 	case EMPType::Key:
 		for (auto Data : MPKeyCache)
 		{
-			RetArray.Emplace(Data.RowName);
+			RetArray.Emplace(Data.Key);
 		}
 		break;
 	case EMPType::Float:
 		for (auto Data : MPFloatCache)
 		{
-			RetArray.Emplace(Data.RowName);
+			RetArray.Emplace(Data.Key);
 		}
 		break;
 	case EMPType::Float4:
 		for (auto Data : MPFloat4Cache)
 		{
-			RetArray.Emplace(Data.RowName);
+			RetArray.Emplace(Data.Key);
 		}
 		break;
 	case EMPType::Texture:
 		for (auto Data : MPTextureCache)
 		{
-			RetArray.Emplace(Data.RowName);
+			RetArray.Emplace(Data.Key);
 		}
 		break;
 	}
 
 	return RetArray;
+}
+
+FMPTableProp* UToShaderSubsystem::GetMP(const FName Name, const EMPType Type)
+{
+	switch (Type) {
+	case EMPType::Key:
+		if(MPKeyCache.Contains(Name))
+			return MPKeyCache[Name];
+		break;
+	case EMPType::Float:
+		if(MPFloatCache.Contains(Name))
+			return MPFloatCache[Name];
+		break;
+	case EMPType::Float4:
+		if(MPFloat4Cache.Contains(Name))
+			return MPFloat4Cache[Name];
+		break;
+	case EMPType::Texture:
+		if(MPTextureCache.Contains(Name))
+			return MPTextureCache[Name];
+		break;
+	}
+	return nullptr;
 }
 
 void UToShaderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -253,16 +276,16 @@ void UToShaderSubsystem::UpdateMaterialEffectPropertyTable()
 		switch (RowData->Type)
 		{
 		case EMPType::Key:
-			MPKeyCache.Add({RowName, RowData});
+			MPKeyCache.Add(RowName,RowData);
 			break;
 		case EMPType::Float:
-			MPFloatCache.Add({RowName, RowData});
+			MPFloatCache.Add(RowName,RowData);
 			break;
 		case EMPType::Float4:
-			MPFloat4Cache.Add({RowName, RowData});
+			MPFloat4Cache.Add(RowName,RowData);
 			break;
 		case EMPType::Texture:
-			MPTextureCache.Add({RowName, RowData});
+			MPTextureCache.Add(RowName,RowData);
 			break;
 		}
 	}
