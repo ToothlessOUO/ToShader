@@ -35,7 +35,7 @@ void UToShaderHelpers::log(FString msg, int b, bool printAsBool)
 
 void UToShaderHelpers::log(FString msg, FName i)
 {
-	msg+=i.ToString();
+	msg += i.ToString();
 	log(msg);
 }
 
@@ -45,14 +45,14 @@ void UToShaderHelpers::log(FString msg, float i)
 	log(msg);
 }
 
-void UToShaderHelpers::modifyConifg(FString path, FString section, TMap<FString,FString> key_val)
+void UToShaderHelpers::modifyConifg(FString path, FString section, TMap<FString, FString> key_val)
 {
 	FConfigFile ConfigFile;
 	ConfigFile.Read(path);
 	// 读取配置文件
 	if (ConfigFile.IsEmpty())
 	{
-		tolog("can't read file : "+ path);
+		tolog("can't read file : " + path);
 		return;
 	}
 	// 添加或更新配置项
@@ -63,15 +63,15 @@ void UToShaderHelpers::modifyConifg(FString path, FString section, TMap<FString,
 	// 写回配置文件
 	if (!ConfigFile.Write(path))
 	{
-		tolog("can't write file : "+ path);
+		tolog("can't write file : " + path);
 		return;
 	}
-	tolog("update success "+ path);
+	tolog("update success " + path);
 }
 
-void UToShaderHelpers::getMeshMaterials(UPrimitiveComponent* mesh,FMaterialGroup& outMaterials)
+void UToShaderHelpers::getMeshMaterials(UPrimitiveComponent* mesh, FMaterialGroup& outMaterials)
 {
-	for (int i=0;i<mesh->GetNumMaterials();i++)
+	for (int i = 0; i < mesh->GetNumMaterials(); i++)
 	{
 		outMaterials.Materials.Add(mesh->GetMaterial(i));
 	}
@@ -80,18 +80,18 @@ void UToShaderHelpers::getMeshMaterials(UPrimitiveComponent* mesh,FMaterialGroup
 void UToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, UMaterialInterface* mat)
 {
 	if (mesh == nullptr || mat == nullptr) return;
-	for (int i=0;i<mesh->GetNumMaterials();i++)
+	for (int i = 0; i < mesh->GetNumMaterials(); i++)
 	{
-		mesh->SetMaterial(i,mat);
+		mesh->SetMaterial(i, mat);
 	}
 }
 
 void UToShaderHelpers::setMeshMaterials(UPrimitiveComponent* mesh, TArray<UMaterialInterface*> mats)
 {
 	if (mats.Num() < mesh->GetNumMaterials()) return;
-	for (int i=0;i<mesh->GetNumMaterials();i++)
+	for (int i = 0; i < mesh->GetNumMaterials(); i++)
 	{
-		mesh->SetMaterial(i,mats[i]);
+		mesh->SetMaterial(i, mats[i]);
 	}
 }
 
@@ -107,10 +107,10 @@ FTransform UToShaderHelpers::getMainCameraTransform()
 	if (!GEditor->PlayWorld)
 	{
 		if (FLevelEditorViewportClient* Client = GetViewPortClient())
-		{ 
+		{
 			FRotator ViewportRotation(0, 0, 0);
 			FVector ViewportLocation(0, 0, 0);
-		
+
 			if (!Client->IsOrtho())
 			{
 				ViewportRotation = Client->GetViewRotation();
@@ -137,20 +137,20 @@ TArray<UMaterialInterface*> UToShaderHelpers::SetMeshMaterial(UPrimitiveComponen
 {
 	if (!Mesh || !NewMat) return {};
 	TArray<UMaterialInterface*> RetMaterials;
-	for (int i=0;i<Mesh->GetNumMaterials();i++)
+	for (int i = 0; i < Mesh->GetNumMaterials(); i++)
 	{
 		RetMaterials.Add(Mesh->GetMaterial(i));
-		Mesh->SetMaterial(i,NewMat);
+		Mesh->SetMaterial(i, NewMat);
 	}
 	return RetMaterials;
 }
 
 void UToShaderHelpers::SetMeshMaterials(UPrimitiveComponent* Mesh, TArray<UMaterialInterface*> NewMats)
 {
-	if (!Mesh || NewMats.IsEmpty() || NewMats.Num()<Mesh->GetNumMaterials()) return;
-	for (int i=0;i<Mesh->GetNumMaterials();i++)
+	if (!Mesh || NewMats.IsEmpty() || NewMats.Num() < Mesh->GetNumMaterials()) return;
+	for (int i = 0; i < Mesh->GetNumMaterials(); i++)
 	{
-		Mesh->SetMaterial(i,NewMats[i]);
+		Mesh->SetMaterial(i, NewMats[i]);
 	}
 }
 
@@ -178,12 +178,12 @@ void FToShaderModule::ApplyEngineConfigs()
 {
 	const FString ConfigPath = FPaths::ProjectConfigDir() / TEXT("DefaultEngine.ini");
 	const FString Section = "/Script/Engine.RendererSettings";
-	TMap<FString,FString> ConfigKV;
-	ConfigKV.Emplace("r.Nanite.Allowtessellation","1");
-	ConfigKV.Emplace("r.Nanite.Tessellation","1");
-	ConfigKV.Emplace("r.VirtualTextures","False");
-	ConfigKV.Emplace("r.DistanceFieldAO","0");
-	UToShaderHelpers::modifyConifg(ConfigPath,Section,ConfigKV);
+	TMap<FString, FString> ConfigKV;
+	ConfigKV.Emplace("r.Nanite.Allowtessellation", "1");
+	ConfigKV.Emplace("r.Nanite.Tessellation", "1");
+	ConfigKV.Emplace("r.VirtualTextures", "False");
+	ConfigKV.Emplace("r.DistanceFieldAO", "0");
+	UToShaderHelpers::modifyConifg(ConfigPath, Section, ConfigKV);
 }
 
 bool FToShaderModule::Tick(float DeltaTime)

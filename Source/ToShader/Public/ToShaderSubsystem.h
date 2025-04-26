@@ -87,6 +87,8 @@ public:
 	TArray<FName> GetMaterialEffectPropertyTableRowNames(EMPType Type);
 	FMPTableProp* GetMP(FName Name,EMPType Type);
 
+	TArray<FName> MaterialEffectTag{"Body","Outline","Weapon"};
+
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;

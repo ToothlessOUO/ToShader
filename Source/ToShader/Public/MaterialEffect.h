@@ -1,12 +1,13 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "ToShaderSubsystem.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "MaterialEffect.generated.h"
 
-#pragma region MaterialEffect Structs
-
 class UMaterialEffectLib;
+class UEffectDataAsset;
 
+#pragma region MPDTable
 UENUM(BlueprintType)
 enum class EMPType : uint8
 {
@@ -29,7 +30,9 @@ struct FMPTableProp : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int CustomPrimitiveDataIndex = -1;
 };
+#pragma endregion
 
+#pragma region MP
 USTRUCT(BlueprintType)
 struct FMPKey
 {
@@ -99,15 +102,50 @@ struct FMPTexture
 	UPROPERTY(EditAnywhere)
 	UTexture* Tex = nullptr;
 };
+#pragma endregion
+
+#pragma region MPD
+struct FMPDKey
+{
+	FName Name;
+	UEffectDataAsset* Modifier = nullptr;//如果修改者为null，说明目前是在向原始数据混合
+	int CustomPrimitiveIndex = -1;
+
+	bool operator==(const FMPDKey& Other) const
+	{
+		if (Other.CustomPrimitiveIndex != -1) return CustomPrimitiveIndex==Other.CustomPrimitiveIndex;
+		if (Other.Name == "") return false;
+		return Other.Name == Name;
+	}
+};
+
+struct FMPDGroup
+{
+	TMap<FMPDKey, float> Floats;
+	TMap<FMPDKey, FVector4> Float4s;
+	TMap<FMPDKey, UTexture*> Textures;
+};
+#pragma endregion
+
+#pragma region EffectData
+UENUM(BlueprintType)
+enum class EMaterialEffectPriority : uint8
+{
+	Low = 0, Normal = 1, High = 2
+};
 
 UCLASS(Blueprintable)
-class TOSHADER_API UEffectData : public UPrimaryDataAsset
+class TOSHADER_API UEffectDataAsset : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 
 public:
 	UPROPERTY(EditDefaultsOnly)
 	FName EffectName;
+	UPROPERTY(EditDefaultsOnly ,meta=(GetOptions="ToShader.MaterialEffectLib.MaterialEffect_GetValidName_Tag"))
+	FName Tag;
+	UPROPERTY(EditDefaultsOnly)
+	EMaterialEffectPriority EffectPriority = EMaterialEffectPriority::Normal;
 	UPROPERTY(EditDefaultsOnly)
 	float Duration;
 	UPROPERTY(EditDefaultsOnly)
@@ -133,71 +171,38 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TArray<FMPTexture> Textures;
 
+	//Runtime
+	int Counter;
+
 protected:
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 
-	bool operator==(const UEffectData& Other) const
+	bool operator==(const UEffectDataAsset& Other) const
 	{
 		return Other.EffectName == EffectName;
 	}
 };
 
-USTRUCT(BlueprintType)
-struct FMPTemplate 
+struct FEffectData
 {
-	GENERATED_USTRUCT_BODY()
-	UPROPERTY(EditAnywhere)
-	FName Name = "";
-	UPROPERTY(EditAnywhere)
-	float Timer = 0;;
-	UPROPERTY(EditAnywhere)
-	int CustomPrimitiveDataIndex;
-	UPROPERTY(EditAnywhere)
-	EMPType Type;
-	
-	UPROPERTY(EditAnywhere)
-	float FloatVal;
-	UPROPERTY(EditAnywhere)
-	FVector4 Float4Val;
-	UPROPERTY(EditAnywhere)
-	UTexture* TextureVal;
+	float Timer;
+	FMPDGroup Group;
 };
-
-struct FMPData
-{
-	bool bIsCustomPrimitiveData = true;
-	int CustomPrimitiveIndex = -1;
-	
-	float Data;
-	UTexture* Data_Tex;
-};
-
 #pragma endregion
 
 UCLASS()
 class TOSHADER_API UMaterialEffectLib : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
-
+	
+	static FMPDGroup MakeMPDGroup(UEffectDataAsset* Asset,const FEffectData& Data,bool& bIsValid);
 public:
-	UFUNCTION(BlueprintCallable)
-	TArray<FMPTemplate> ConstructMPFromEffectData(UEffectData* Data);
-
-	UFUNCTION(BlueprintCallable)
-	FMPTemplate ConstructOriMPFromMesh(UPrimitiveComponent* Mesh);
+	static void UpdateOriMPDGroup(UPrimitiveComponent* Mesh,FMPDGroup& OriGroup,FMPDGroup& LastGroup,const FEffectData& InNewEffect);
+	//以下的bool valid一旦为false说明 Effect 不可用、已结束
+	static FEffectData MakeEffectData(UEffectDataAsset* Asset,bool& bIsValid);
+	static bool UpdateEffectData(float Dt,UEffectDataAsset* Asset,FEffectData& Data);
+	static void CombineMPD(FMPDGroup& CurMPD,const FMPDGroup& EffectMPD);
 	
-	UFUNCTION(BlueprintCallable)
-	void UpdateOriMPCache(TMap<FName, FMPTemplate>& OriCache,TArray<FMPTemplate> MPFromNewEff);
-	
-	//call when new effect apply
-	UFUNCTION(BlueprintCallable)
-	void ApplyNewEffect(UPrimitiveComponent* AMeshHasEffect,TMap<FName, FMPTemplate>& OriCache, TMap<FName, FMPTemplate>& CurData,
-	                    TArray<UEffectData*>& EffectList, UEffectData* NewEffect);
-
-	//call for every effect apply
-	UFUNCTION(BlueprintCallable)
-	void UpdateMPData(TArray<UPrimitiveComponent*> Meshes,TMap<FName, FMPTemplate>& CurData, UEffectData* NewEffect);
-
 	UFUNCTION(CallInEditor, BlueprintCallable)
 	static TArray<FName> MaterialEffect_GetValidName_Key();
 	UFUNCTION(CallInEditor, BlueprintCallable)
@@ -206,4 +211,6 @@ public:
 	static TArray<FName> MaterialEffect_GetValidName_Float4();
 	UFUNCTION(CallInEditor, BlueprintCallable)
 	static TArray<FName> MaterialEffect_GetValidName_Texture();
+	UFUNCTION(CallInEditor, BlueprintCallable)
+	static TArray<FName> MaterialEffect_GetValidName_Tag();
 };

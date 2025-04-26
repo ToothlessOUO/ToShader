@@ -39,6 +39,9 @@ public:
 	UPROPERTY()
 	TMap<ERendererTag,FMeshGroup> RendererGroup;
 
+	UFUNCTION(BlueprintCallable)
+	void ApplyNewEffect(UEffectDataAsset* NewEffect);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -55,6 +58,13 @@ private:
 	void CacheMeshTags();
 
 	void CollectTargetsAndCallSubsystem();
+
+	UPrimitiveComponent* GetFirstMeshTag(FName Tag);
+	TMap<FName,TMap<UEffectDataAsset*,FEffectData>> MaterialEffectData;
+	TMap<FName,FMPDGroup> LastMPD;
+	TMap<FName,FMPDGroup> OriMPD;
+	TMap<FName,int> MPDCounter;
+	void UpdateMaterialEffect(float Dt);
 };
 
 #pragma endregion
