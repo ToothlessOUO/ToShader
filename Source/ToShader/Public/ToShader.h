@@ -21,6 +21,11 @@ class TOSHADER_API UToShaderHelpers : public UBlueprintFunctionLibrary
 	static void setMeshMaterials(UPrimitiveComponent* mesh,UMaterialInterface* mat);
 	static void setMeshMaterials(UPrimitiveComponent* mesh,TArray<UMaterialInterface*> mats);
 	static int getRTSizeScale(ERTSizeScale scale);
+	//Convert all material of mesh to dynamic material instance if it is not dynamic
+	static FDynamicMaterialGroup makeAndApplyMeshMaterialsDynamic(UPrimitiveComponent* mesh);
+	static void setDynamicMaterialGroupFloatParam(FName name,float val,const FDynamicMaterialGroup& group);
+	static void setDynamicMaterialGroupFloat4Param(FName name,FVector4f val,const FDynamicMaterialGroup& group);
+	static void setDynamicMaterialGroupTextureParam(FName name,UTexture* val,const FDynamicMaterialGroup& group);
 
 #if WITH_EDITOR
 	static FLevelEditorViewportClient* GetViewPortClient()

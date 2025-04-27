@@ -11,14 +11,13 @@ UToShaderComponent::UToShaderComponent()
 void UToShaderComponent::ApplyNewEffect(UEffectDataAsset* NewEffect)
 {
 	if (!NewEffect) return;
-	if (!MeshTags.Contains(NewEffect->Tag)) return;
+	if (!MeshTags.Contains(NewEffect->Tag)) return; //所有需要的Mesh请务必提前在Actor中添加并设置好，避免运行时开销
 	const auto Tag = NewEffect->Tag;
 	if (!MaterialEffectData.Contains(Tag))
 	{
-		MaterialEffectData.Add(Tag);
-		OriMPD.Add(Tag);
-		LastMPD.Add(Tag);
-		MPDCounter.Add(Tag);
+		MaterialEffectData.Emplace(Tag);
+		LastMPD.Emplace(Tag);
+		MPDCounter.Emplace(Tag);
 	}
 	if (MaterialEffectData[Tag].Contains(NewEffect))
 	{
@@ -30,18 +29,11 @@ void UToShaderComponent::ApplyNewEffect(UEffectDataAsset* NewEffect)
 	if (!bSuccess) return;
 	MPDCounter[Tag]++;
 	NewEffect->Counter = MPDCounter[Tag];
-	MaterialEffectData[Tag].Add(NewEffect, NewEffectData);
-	UMaterialEffectLib::UpdateOriMPDGroup(GetFirstMeshTag(Tag), OriMPD[Tag], LastMPD[Tag], NewEffectData);
+	MaterialEffectData[Tag].Emplace(NewEffect, NewEffectData);
+	//将新元素加载进LastGroup
+	UMaterialEffectLib::AddLastMPDGroupProp(GetFirstMeshTag(Tag), LastMPD[Tag], NewEffectData);
 	//整理优先级
-	MaterialEffectData[Tag].KeySort([](const UEffectDataAsset* A1, const UEffectDataAsset* A2)
-	{
-		if (A1->EffectPriority > A2->EffectPriority) return true;
-		if (A1->EffectPriority == A2->EffectPriority)
-		{
-			if (A1->Counter > A2->Counter) return true;
-		}
-		return false;
-	});
+	UMaterialEffectLib::SortEffectDataMap(MaterialEffectData[Tag]);
 }
 
 //Game & PIE
@@ -87,6 +79,8 @@ void UToShaderComponent::CacheMeshTags()
 	{
 		if (!Element) continue;
 		Meshes.Components.Emplace(Element);
+		Meshes.MeshDyMaterial.Emplace(Element);
+		Meshes.MeshDyMaterial[Element] = UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(Element);
 		for (auto Tag : Element->ComponentTags)
 		{
 			if (!MeshTags.Contains(Tag))
@@ -119,7 +113,8 @@ UPrimitiveComponent* UToShaderComponent::GetFirstMeshTag(FName Tag)
 	return nullptr;
 }
 
-void UToShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UToShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+                                       FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -128,83 +123,162 @@ void UToShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 
 void UToShaderComponent::UpdateMaterialEffect(float Dt)
 {
-	for (auto Data : MaterialEffectData)
+	for (auto& Data : MaterialEffectData)
 	{
 		//Update Data and
+		auto CurModifyTag = Data.Key;
 		FMPDGroup CurMPD;
-		for (auto It = Data.Value.CreateIterator(); It; ++It)
+		TArray<UEffectDataAsset*> RemoveList;
+		for (auto D : Data.Value)
 		{
-			if (!UMaterialEffectLib::UpdateEffectData(Dt, It.Key(), It.Value()))
+			if (UMaterialEffectLib::IsEffectDataEnd(Dt, D.Key, D.Value))
 			{
-				It.RemoveCurrent(); // 安全删除当前元素
-			}
-			else
-			{
-				UMaterialEffectLib::CombineMPD(CurMPD, It.Value().Group);
+				for (auto E : D.Key->Keys) //处理结束时才执行的 Key
+				{
+					if (!E.bSetAtEnd) continue;
+					if (auto Prop = UToShaderSubsystem::GetSubsystem()->GetMP(E.Name, EMPType::Key);
+						Prop->CustomPrimitiveDataIndex != -1)
+					{
+						for (auto Mesh : MeshTags[CurModifyTag].Components)
+						{
+							Mesh->SetCustomPrimitiveDataFloat(Prop->CustomPrimitiveDataIndex, E.bIsEnabled ? 1 : 0);
+						}
+					}
+					else
+					{
+						for (auto Mesh : MeshTags[CurModifyTag].Components)
+						{
+							UToShaderHelpers::setDynamicMaterialGroupFloatParam(
+								E.Name, E.bIsEnabled ? 1 : 0, Meshes.MeshDyMaterial[Mesh]);
+						}
+					}
+				}
+				RemoveList.Add(D.Key);
 			}
 		}
-		//遍历last并作比较同时修改数据
-		for (FMPDGroup& L : LastMPD[Data.Key])
+		for (auto E : RemoveList)
 		{
-			for (auto& E : L.Floats)
+			Data.Value.Remove(E);
+		}
+		for (auto It = Data.Value.CreateIterator(); It; ++It)
+		{
+			if (UMaterialEffectLib::IsEffectDataEnd(Dt, It.Key(), It.Value()))
 			{
-				float TargetVal;
-				if (CurMPD.Floats.Contains(E.Key))
-					TargetVal = CurMPD.Floats[E.Key];
-				else
-					TargetVal = OriMPD[Data.Key].Floats[E.Key];
-				if (!FMath::IsNearlyEqual(E.Value, TargetVal))
+				for (auto E : It.Key()->Keys) //处理结束时才执行的 Key
 				{
-					E.Value = FMath::Lerp(E.Value, TargetVal, 0.1f);
-					if (E.Key.CustomPrimitiveIndex!=-1)
+					if (!E.bSetAtEnd) continue;
+					if (auto Prop = UToShaderSubsystem::GetSubsystem()->GetMP(E.Name, EMPType::Key);
+						Prop->CustomPrimitiveDataIndex != -1)
 					{
-						for (auto Mesh : MeshTags[Data.Key].Components)
+						for (auto Mesh : MeshTags[CurModifyTag].Components)
 						{
-							Mesh->SetCustomPrimitiveDataFloat(E.Key.CustomPrimitiveIndex, E.Value);
+							Mesh->SetCustomPrimitiveDataFloat(Prop->CustomPrimitiveDataIndex, E.bIsEnabled ? 1 : 0);
 						}
 					}
-					//ToDo:创建材质实例，支持设置PerMaterial参数
-				}
-			}
-			for (auto& E : L.Float4s)
-			{
-				FVector4 TargetVal;
-				if (CurMPD.Float4s.Contains(E.Key))
-					TargetVal = CurMPD.Float4s[E.Key];
-				else
-					TargetVal = OriMPD[Data.Key].Float4s[E.Key];
-				if (!(FMath::IsNearlyEqual(E.Value.X, TargetVal.X)
-					&& FMath::IsNearlyEqual(E.Value.Y, TargetVal.Y)
-					&& FMath::IsNearlyEqual(E.Value.Z, TargetVal.Z)
-					&& FMath::IsNearlyEqual(E.Value.W, TargetVal.W)))
-				{
-					E.Value = FMath::Lerp(E.Value, TargetVal, 0.1f);
-					if (E.Key.CustomPrimitiveIndex!=-1)
+					else
 					{
-						for (auto Mesh : MeshTags[Data.Key].Components)
+						for (auto Mesh : MeshTags[CurModifyTag].Components)
 						{
-							Mesh->SetCustomPrimitiveDataVector4(E.Key.CustomPrimitiveIndex, E.Value);
+							UToShaderHelpers::setDynamicMaterialGroupFloatParam(
+								E.Name, E.bIsEnabled ? 1 : 0, Meshes.MeshDyMaterial[Mesh]);
 						}
 					}
 				}
+				It.RemoveCurrent(); // 安全删除当前元素
 			}
-			for (auto& E : L.Textures)
+		}
+		for (auto& E : Data.Value)
+		{
+			UMaterialEffectLib::UpdateEffectData(Dt, E.Key, E.Value);
+			UMaterialEffectLib::CombineMPD(CurMPD, E.Value.Group);
+		}
+		//遍历last并作比较同时 更新Last 修改数据 
+		for (auto& E : LastMPD[CurModifyTag].Floats)
+		{
+			if (E.Key.bSetAtEndOfAnim) continue; //Key的特殊规则
+			float TargetVal;
+			if (CurMPD.Floats.Contains(E.Key))
+				TargetVal = CurMPD.Floats[E.Key];
+			else //CustomPrimitiveData的默认值都是0
+				TargetVal = 0;
+			if (!FMath::IsNearlyEqual(E.Value, TargetVal))
 			{
-				UTexture* TargetVal;
-				if (CurMPD.Textures.Contains(E.Key))
-					TargetVal = CurMPD.Textures[E.Key];
-				else
-					TargetVal = OriMPD[Data.Key].Textures[E.Key];
-				if (!(CurMPD.Textures[E.Key] == E.Value))
+				tolog(E.Key.Name.ToString() + " : ", E.Value);
+				if (E.Key.bIsKey)
 				{
 					E.Value = TargetVal;
+				}
+				else
+				{
+					E.Value = FMath::Lerp(E.Value, TargetVal, 0.1f);
+				}
+				if (E.Key.CustomPrimitiveIndex != -1)
+				{
+					for (auto Mesh : MeshTags[CurModifyTag].Components)
+					{
+						Mesh->SetCustomPrimitiveDataFloat(E.Key.CustomPrimitiveIndex, E.Value);
+					}
+				}
+				else // 说明不是存在CustomPrimitiveData里的，而是PerMaterial数据
+				{
+					for (auto Mesh : MeshTags[CurModifyTag].Components)
+					{
+						UToShaderHelpers::setDynamicMaterialGroupFloatParam(
+							E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+					}
+				}
+			}
+		}
+		for (auto& E : LastMPD[CurModifyTag].Float4s)
+		{
+			FVector4f TargetVal;
+			if (CurMPD.Float4s.Contains(E.Key))
+				TargetVal = CurMPD.Float4s[E.Key];
+			else
+				TargetVal = FVector4f::Zero();
+			if (!(FMath::IsNearlyEqual(E.Value.X, TargetVal.X)
+				&& FMath::IsNearlyEqual(E.Value.Y, TargetVal.Y)
+				&& FMath::IsNearlyEqual(E.Value.Z, TargetVal.Z)
+				&& FMath::IsNearlyEqual(E.Value.W, TargetVal.W)))
+			{
+				E.Value = FMath::Lerp(E.Value, TargetVal, 0.1f);
+				if (E.Key.CustomPrimitiveIndex != -1)
+				{
+					for (auto Mesh : MeshTags[CurModifyTag].Components)
+					{
+						Mesh->SetCustomPrimitiveDataVector4(E.Key.CustomPrimitiveIndex,
+						                                    FVector4(E.Value.X, E.Value.Y, E.Value.Z, E.Value.W));
+					}
+				}
+				else
+				{
+					for (auto Mesh : MeshTags[CurModifyTag].Components)
+					{
+						UToShaderHelpers::setDynamicMaterialGroupFloat4Param(
+							E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+					}
+				}
+			}
+		}
+		for (auto& E : LastMPD[CurModifyTag].Textures)
+		{
+			UTexture* TargetVal;
+			if (CurMPD.Textures.Contains(E.Key))
+				TargetVal = CurMPD.Textures[E.Key];
+			else
+				TargetVal = nullptr;
+			if (E.Value != TargetVal)
+			{
+				E.Value = TargetVal;
+				for (auto Mesh : MeshTags[CurModifyTag].Components)
+				{
+					UToShaderHelpers::setDynamicMaterialGroupTextureParam(
+						E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
 				}
 			}
 		}
 	}
 }
-
-
 #pragma endregion
 
 #pragma region AlwaysTickComponent
@@ -226,7 +300,8 @@ void UToAlwaysTickComponent::PostInitProperties()
 	}
 }
 
-void UToAlwaysTickComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UToAlwaysTickComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+                                           FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	if (bIsOwnerImplementInterface)

@@ -1,6 +1,5 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "ToShaderSubsystem.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "MaterialEffect.generated.h"
 
@@ -29,6 +28,7 @@ struct FMPTableProp : public FTableRowBase
 	EMPType Type = EMPType::Float;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int CustomPrimitiveDataIndex = -1;
+	//CustomPrimitiveData的默认值都是0！！
 };
 #pragma endregion
 
@@ -41,6 +41,8 @@ struct FMPKey
 	FName Name;
 	UPROPERTY(EditAnywhere)
 	bool bIsEnabled;
+	UPROPERTY(EditAnywhere)
+	bool bSetAtEnd;
 };
 
 USTRUCT(BlueprintType)
@@ -59,6 +61,10 @@ struct FMPFloatCurve
 	GENERATED_USTRUCT_BODY()
 	UPROPERTY(EditDefaultsOnly, meta=(GetOptions="ToShader.MaterialEffectLib.MaterialEffect_GetValidName_Float"))
 	FName Name;
+	UPROPERTY(EditAnywhere)
+	float CurveScale = 1;
+	UPROPERTY(EditAnywhere)
+	bool bUseNormalizedDuration;
 	UPROPERTY(EditAnywhere)
 	UCurveFloat* Curve;
 };
@@ -90,6 +96,10 @@ struct FMPColorCurve
 	UPROPERTY(EditDefaultsOnly, meta=(GetOptions="ToShader.MaterialEffectLib.MaterialEffect_GetValidName_Float4"))
 	FName Name;
 	UPROPERTY(EditAnywhere)
+	FLinearColor CurveScale = FLinearColor(1,1,1,1);
+	UPROPERTY(EditAnywhere)
+	bool bUseNormalizedDuration;
+	UPROPERTY(EditAnywhere)
 	UCurveLinearColor* Curve;
 };
 
@@ -110,19 +120,25 @@ struct FMPDKey
 	FName Name;
 	UEffectDataAsset* Modifier = nullptr;//如果修改者为null，说明目前是在向原始数据混合
 	int CustomPrimitiveIndex = -1;
+	bool bSetAtEndOfAnim = false;
+	bool bIsKey = false;
 
 	bool operator==(const FMPDKey& Other) const
 	{
-		if (Other.CustomPrimitiveIndex != -1) return CustomPrimitiveIndex==Other.CustomPrimitiveIndex;
 		if (Other.Name == "") return false;
 		return Other.Name == Name;
+	}
+
+	friend uint32 GetTypeHash(const FMPDKey& Other)
+	{
+		return GetTypeHash(Other.Name);
 	}
 };
 
 struct FMPDGroup
 {
-	TMap<FMPDKey, float> Floats;
-	TMap<FMPDKey, FVector4> Float4s;
+	TMap<FMPDKey, float>  Floats;
+	TMap<FMPDKey, FVector4f> Float4s;
 	TMap<FMPDKey, UTexture*> Textures;
 };
 #pragma endregion
@@ -172,7 +188,7 @@ public:
 	TArray<FMPTexture> Textures;
 
 	//Runtime
-	int Counter;
+	int Counter;//添加顺序  关乎排序，请在apply的位置维护
 
 protected:
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -195,12 +211,15 @@ class TOSHADER_API UMaterialEffectLib : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 	
-	static FMPDGroup MakeMPDGroup(UEffectDataAsset* Asset,const FEffectData& Data,bool& bIsValid);
+	static FMPDGroup MakeMPDGroup(UEffectDataAsset* Asset,bool& bIsValid);
+	static void UpdateMPDGroup(UEffectDataAsset* Asset,FEffectData& Data);
 public:
-	static void UpdateOriMPDGroup(UPrimitiveComponent* Mesh,FMPDGroup& OriGroup,FMPDGroup& LastGroup,const FEffectData& InNewEffect);
+	static void SortEffectDataMap(TMap<UEffectDataAsset*,FEffectData>& M);
+	static void AddLastMPDGroupProp(UPrimitiveComponent* Mesh,FMPDGroup& LastGroup,const FEffectData& InNewEffect);
 	//以下的bool valid一旦为false说明 Effect 不可用、已结束
 	static FEffectData MakeEffectData(UEffectDataAsset* Asset,bool& bIsValid);
-	static bool UpdateEffectData(float Dt,UEffectDataAsset* Asset,FEffectData& Data);
+	static bool IsEffectDataEnd(float Dt, const UEffectDataAsset* Asset, const FEffectData& Data);
+	static void UpdateEffectData(float Dt,UEffectDataAsset* Asset,FEffectData& Data);
 	static void CombineMPD(FMPDGroup& CurMPD,const FMPDGroup& EffectMPD);
 	
 	UFUNCTION(CallInEditor, BlueprintCallable)

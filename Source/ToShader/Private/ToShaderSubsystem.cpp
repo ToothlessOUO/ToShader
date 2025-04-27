@@ -177,6 +177,16 @@ FMPTableProp* UToShaderSubsystem::GetMP(const FName Name, const EMPType Type)
 	return nullptr;
 }
 
+TArray<FName> UToShaderSubsystem::GetMaterialEffectTag()
+{
+	TArray<FName> Res;
+	for (auto E :MaterialEffectTagNames )
+	{
+		Res.Emplace(E.Value);
+	}
+	return Res;
+}
+
 void UToShaderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -231,20 +241,27 @@ void UToShaderSubsystem::UpdateMeshRenderersShowLists()
 
 bool UToShaderSubsystem::GetTagName(ERendererTag Tag, FName& TagName)
 {
-	if (TagNames.IsEmpty()) return false;
-	TagName = TagNames[Tag];
+	if (RendererTagNames.IsEmpty()) return false;
+	TagName = RendererTagNames[Tag];
 	return true;
 }
 
 void UToShaderSubsystem::CacheTagNames()
 {
-	//if (!TagNames.IsEmpty()) return;
-	const auto EnumPtr = StaticEnum<ERendererTag>();
+	auto EnumPtr = StaticEnum<ERendererTag>();
 	if (!EnumPtr) return;
 	for (ERendererTag E : TEnumRange<ERendererTag>())
 	{
 		const auto TagName = FName(EnumPtr->GetNameStringByValue(static_cast<int64>(E)));
-		TagNames.Emplace(E, TagName);
+		RendererTagNames.Emplace(E, TagName);
+	}
+
+	EnumPtr = StaticEnum<EMaterialEffectActionScope>();
+	if (!EnumPtr) return;
+	for (EMaterialEffectActionScope E : TEnumRange<EMaterialEffectActionScope>())
+	{
+		const auto TagName = FName(EnumPtr->GetNameStringByValue(static_cast<int64>(E)));
+		MaterialEffectTagNames.Emplace(E, TagName);
 	}
 }
 

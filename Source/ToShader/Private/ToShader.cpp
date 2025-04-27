@@ -6,6 +6,7 @@
 #include "ShaderCore.h"
 #include "Editor.h"
 #include "LevelEditorViewport.h"
+#include "Kismet/KismetRenderingLibrary.h"
 #include "Slate/SceneViewport.h"
 
 DEFINE_LOG_CATEGORY(LogToShader);
@@ -101,6 +102,59 @@ int UToShaderHelpers::getRTSizeScale(ERTSizeScale scale)
 	return static_cast<int>(scale);
 }
 
+FDynamicMaterialGroup UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(UPrimitiveComponent* mesh)
+{
+	FDynamicMaterialGroup Group;
+	for (int i = 0; i < mesh->GetNumMaterials(); i++)
+	{
+		if (const auto LMat = mesh->GetMaterial(i); LMat != nullptr)
+		{
+			if (LMat->IsA(UMaterialInstanceDynamic::StaticClass()))
+			{
+				auto DLMat = Cast<UMaterialInstanceDynamic>(LMat);
+				Group.Materials.Emplace(DLMat);
+				break;
+			}
+			auto M = UMaterialInstanceDynamic::Create(LMat, mesh);
+			mesh->SetMaterial(i, M);
+			Group.Materials.Emplace(M);
+		}
+		else
+		{
+			Group.Materials.Emplace(nullptr);
+		}
+	}
+	return Group;
+}
+
+void UToShaderHelpers::setDynamicMaterialGroupFloatParam(FName name, const float val,const FDynamicMaterialGroup& group)
+{
+	for (auto M : group.Materials)
+	{
+		if(!M) continue;
+		M->SetScalarParameterValue(name,val);
+	}
+}
+
+void UToShaderHelpers::setDynamicMaterialGroupFloat4Param(FName name, FVector4f val, const FDynamicMaterialGroup& group)
+{
+	for (auto M : group.Materials)
+	{
+		if(!M) continue;
+		M->SetVectorParameterValue(name,val);
+	}
+}
+
+void UToShaderHelpers::setDynamicMaterialGroupTextureParam(FName name, UTexture* val, const FDynamicMaterialGroup& group)
+{
+	if(!val) return;
+	for (auto M : group.Materials)
+	{
+		if(!M) continue;
+		M->SetTextureParameterValue(name,val);
+	}
+}
+
 FTransform UToShaderHelpers::getMainCameraTransform()
 {
 #if WITH_EDITOR
@@ -163,7 +217,8 @@ void FToShaderModule::StartupModule()
 	TickDelegate = FTickerDelegate::CreateRaw(this, &FToShaderModule::Tick);
 	TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(TickDelegate);
 
-	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("ToShader"))->GetBaseDir(), TEXT("Shaders"));
+	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("ToShader"))->GetBaseDir(),
+	                                          TEXT("Shaders"));
 	AddShaderSourceDirectoryMapping(TEXT("/Plugin/Runtime/ToShader"), PluginShaderDir);
 
 	ApplyEngineConfigs();

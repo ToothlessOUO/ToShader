@@ -53,7 +53,7 @@ private:
 
 	void Init();
 
-	FMeshGroup Meshes;
+	FMeshGroupDyMat Meshes;
 	TMap<FName,FMeshGroup> MeshTags;
 	void CacheMeshTags();
 
@@ -62,7 +62,6 @@ private:
 	UPrimitiveComponent* GetFirstMeshTag(FName Tag);
 	TMap<FName,TMap<UEffectDataAsset*,FEffectData>> MaterialEffectData;
 	TMap<FName,FMPDGroup> LastMPD;
-	TMap<FName,FMPDGroup> OriMPD;
 	TMap<FName,int> MPDCounter;
 	void UpdateMaterialEffect(float Dt);
 };

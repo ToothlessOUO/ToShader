@@ -10,6 +10,23 @@ class AMeshRenderer;
 class AScreenOverlayMeshManager;
 
 #pragma region structs enums
+
+USTRUCT(BlueprintType)
+struct FDynamicMaterialGroup
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadWrite)
+	TArray<UMaterialInstanceDynamic*> Materials;
+};
+
+USTRUCT(BlueprintType)
+struct FMaterialGroup
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadWrite)
+	TArray<UMaterialInterface*> Materials;
+};
+
 USTRUCT(BlueprintType)
 struct FMeshGroup
 {
@@ -19,11 +36,13 @@ struct FMeshGroup
 };
 
 USTRUCT(BlueprintType)
-struct FMaterialGroup
+struct FMeshGroupDyMat
 {
 	GENERATED_BODY()
 	UPROPERTY(BlueprintReadWrite)
-	TArray<UMaterialInterface*> Materials;
+	TArray<UPrimitiveComponent*> Components;
+	UPROPERTY(BlueprintReadOnly)
+	TMap<UPrimitiveComponent*,FDynamicMaterialGroup> MeshDyMaterial;
 };
 
 USTRUCT()
@@ -53,7 +72,16 @@ enum class ERTSizeScale : uint8
 	,Down6X = 6
 };
 
+UENUM(BlueprintType)
+enum class EMaterialEffectActionScope : uint8
+{
+	Body,Weapon,Outline,OutlineOverlay,
+	PP_Uber,
+	Max
+};
+
 ENUM_RANGE_BY_COUNT(ERendererTag, ERendererTag::Max);
+ENUM_RANGE_BY_COUNT(EMaterialEffectActionScope, EMaterialEffectActionScope::Max);
 
 #pragma endregion
 
@@ -86,8 +114,8 @@ public:
 	void CallUpdate_MaterialEffectPropertyTable();
 	TArray<FName> GetMaterialEffectPropertyTableRowNames(EMPType Type);
 	FMPTableProp* GetMP(FName Name,EMPType Type);
-
-	TArray<FName> MaterialEffectTag{"Body","Outline","Weapon"};
+	
+	TArray<FName> GetMaterialEffectTag();
 
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
@@ -103,14 +131,16 @@ private:
 	TArray<TWeakObjectPtr<AMeshRenderer>> MeshRenderers;
 	void SetShowList(AMeshRenderer* MeshRenderer);
 	void UpdateMeshRenderersShowLists();
+
+	void CacheTagNames();
 	
 	UPROPERTY()
-	TMap<ERendererTag,FName> TagNames;
+	TMap<ERendererTag,FName> RendererTagNames;
 	bool GetTagName(ERendererTag Tag,FName& TagName);
-	void CacheTagNames();
-
+	
 	TWeakObjectPtr<AScreenOverlayMeshManager> ScreenMeshManager;
 	
+	TMap<EMaterialEffectActionScope,FName> MaterialEffectTagNames;
 	TMap<FName,FMPTableProp*> MPKeyCache;
 	TMap<FName,FMPTableProp*> MPFloatCache;
 	TMap<FName,FMPTableProp*> MPFloat4Cache;
