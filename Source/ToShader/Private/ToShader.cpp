@@ -102,6 +102,30 @@ int UToShaderHelpers::getRTSizeScale(ERTSizeScale scale)
 	return static_cast<int>(scale);
 }
 
+bool UToShaderHelpers::isEditor()
+{
+	// 如果没有传入World，尝试获取当前World
+	const UWorld* World = GEngine ? GEngine->GetCurrentPlayWorld() : nullptr;
+	if (!World)
+	{
+		// 如果还是无法获取World，使用基础判断
+		return !GIsEditor || GIsPlayInEditorWorld;
+	}
+	// 根据WorldType判断
+	switch (World->WorldType)
+	{
+	case EWorldType::Game:       // 打包游戏
+	case EWorldType::PIE:         // PIE模式
+	case EWorldType::GamePreview: // 游戏预览
+		return true;
+            
+	case EWorldType::Editor:      // 纯编辑器
+	case EWorldType::EditorPreview: // 编辑器预览
+	default:
+		return false;
+	}
+}
+
 FDynamicMaterialGroup UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(UPrimitiveComponent* mesh)
 {
 	FDynamicMaterialGroup Group;

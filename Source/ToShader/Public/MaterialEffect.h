@@ -39,10 +39,6 @@ struct FMPKey
 	GENERATED_USTRUCT_BODY()
 	UPROPERTY(EditDefaultsOnly, meta=(GetOptions="ToShader.MaterialEffectLib.MaterialEffect_GetValidName_Key"))
 	FName Name;
-	UPROPERTY(EditAnywhere)
-	bool bIsEnabled;
-	UPROPERTY(EditAnywhere)
-	bool bSetAtEnd;
 };
 
 USTRUCT(BlueprintType)
@@ -118,9 +114,7 @@ struct FMPTexture
 struct FMPDKey
 {
 	FName Name;
-	UEffectDataAsset* Modifier = nullptr;//如果修改者为null，说明目前是在向原始数据混合
 	int CustomPrimitiveIndex = -1;
-	bool bSetAtEndOfAnim = false;
 	bool bIsKey = false;
 
 	bool operator==(const FMPDKey& Other) const

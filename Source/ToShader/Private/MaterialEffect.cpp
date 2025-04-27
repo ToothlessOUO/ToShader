@@ -23,8 +23,8 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Key);
 			bool bIsKey = R->Type == EMPType::Key;
-			FMPDKey Key{K.Name, Asset, R->CustomPrimitiveDataIndex, K.bSetAtEnd, bIsKey};
-			MPD.Floats.Emplace(Key, K.bIsEnabled ? 1 : 0);
+			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex, bIsKey};
+			MPD.Floats.Emplace(Key, 1);
 		}
 	}
 	if (!Asset->Floats.IsEmpty())
@@ -32,7 +32,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		for (const auto K : Asset->Floats)
 		{
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float);
-			FMPDKey Key{K.Name, Asset, R->CustomPrimitiveDataIndex};
+			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Floats.Emplace(Key, K.Val);
 		}
 	}
@@ -42,7 +42,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			if (!K.Curve) continue;
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float);
-			FMPDKey Key{K.Name, Asset, R->CustomPrimitiveDataIndex};
+			FMPDKey Key{K.Name,  R->CustomPrimitiveDataIndex};
 			MPD.Floats.Emplace(Key, K.Curve->GetFloatValue(0) * K.CurveScale);
 		}
 	}
@@ -51,7 +51,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		for (const auto K : Asset->Vectors)
 		{
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float4);
-			FMPDKey Key{K.Name, Asset, R->CustomPrimitiveDataIndex};
+			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Float4s.Emplace(Key, FVector4f(K.Val.X, K.Val.Y, K.Val.Z, 1));
 		}
 	}
@@ -60,7 +60,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		for (const auto K : Asset->Colors)
 		{
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float4);
-			FMPDKey Key{K.Name, Asset, R->CustomPrimitiveDataIndex};
+			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Float4s.Emplace(Key, FVector4f(K.Val.R, K.Val.G, K.Val.B, K.Val.A));
 		}
 	}
@@ -70,7 +70,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			if (!K.Curve) continue;
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float4);
-			FMPDKey Key{K.Name, Asset, R->CustomPrimitiveDataIndex};
+			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			auto Color = K.Curve->GetLinearColorValue(0);
 			MPD.Float4s.Emplace(Key, FVector4f(Color.R, Color.G, Color.B, Color.A) * K.CurveScale);
 		}
@@ -81,7 +81,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			if (!K.Tex) continue;
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Texture);
-			FMPDKey Key{K.Name, Asset, R->CustomPrimitiveDataIndex};
+			FMPDKey Key{K.Name,  R->CustomPrimitiveDataIndex};
 			MPD.Textures.Emplace(Key, K.Tex);
 		}
 	}
@@ -170,7 +170,6 @@ void UMaterialEffectLib::AddLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGrou
 			if (bIsValid)
 			{
 				FMPDKey NewOriKey = Element.Key;
-				NewOriKey.Modifier = nullptr;
 				LastGroup.Floats.Emplace(NewOriKey, Ori);
 			}
 		}
@@ -208,7 +207,6 @@ void UMaterialEffectLib::AddLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGrou
 			if (bIsValid)
 			{
 				FMPDKey NewOriKey = Element.Key;
-				NewOriKey.Modifier = nullptr;
 				LastGroup.Float4s.Emplace(NewOriKey, FVector4(Ori.R, Ori.G, Ori.B, Ori.A));
 			}
 		}
@@ -231,7 +229,6 @@ void UMaterialEffectLib::AddLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGrou
 			if (bIsValid)
 			{
 				FMPDKey NewOriKey = Element.Key;
-				NewOriKey.Modifier = nullptr;
 				LastGroup.Textures.Emplace(NewOriKey, Ori);
 			}
 		}

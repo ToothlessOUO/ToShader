@@ -10,7 +10,7 @@ UToShaderComponent::UToShaderComponent()
 
 void UToShaderComponent::ApplyNewEffect(UEffectDataAsset* NewEffect)
 {
-	if (!NewEffect) return;
+	if (!NewEffect || !bHasBeginPlay) return;
 	if (!MeshTags.Contains(NewEffect->Tag)) return; //所有需要的Mesh请务必提前在Actor中添加并设置好，避免运行时开销
 	const auto Tag = NewEffect->Tag;
 	if (!MaterialEffectData.Contains(Tag))
@@ -40,6 +40,7 @@ void UToShaderComponent::ApplyNewEffect(UEffectDataAsset* NewEffect)
 void UToShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	bHasBeginPlay = true;
 	Init();
 }
 
@@ -79,8 +80,11 @@ void UToShaderComponent::CacheMeshTags()
 	{
 		if (!Element) continue;
 		Meshes.Components.Emplace(Element);
-		Meshes.MeshDyMaterial.Emplace(Element);
-		Meshes.MeshDyMaterial[Element] = UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(Element);
+		if (bHasBeginPlay)
+		{
+			Meshes.MeshDyMaterial.Emplace(Element);
+			Meshes.MeshDyMaterial[Element] = UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(Element);
+		}
 		for (auto Tag : Element->ComponentTags)
 		{
 			if (!MeshTags.Contains(Tag))
@@ -133,23 +137,21 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 		{
 			if (UMaterialEffectLib::IsEffectDataEnd(Dt, D.Key, D.Value))
 			{
-				for (auto E : D.Key->Keys) //处理结束时才执行的 Key
+				for (auto E : D.Key->Keys) //结束时关闭key
 				{
-					if (!E.bSetAtEnd) continue;
 					if (auto Prop = UToShaderSubsystem::GetSubsystem()->GetMP(E.Name, EMPType::Key);
 						Prop->CustomPrimitiveDataIndex != -1)
 					{
 						for (auto Mesh : MeshTags[CurModifyTag].Components)
 						{
-							Mesh->SetCustomPrimitiveDataFloat(Prop->CustomPrimitiveDataIndex, E.bIsEnabled ? 1 : 0);
+							Mesh->SetCustomPrimitiveDataFloat(Prop->CustomPrimitiveDataIndex, 0);
 						}
 					}
 					else
 					{
 						for (auto Mesh : MeshTags[CurModifyTag].Components)
 						{
-							UToShaderHelpers::setDynamicMaterialGroupFloatParam(
-								E.Name, E.bIsEnabled ? 1 : 0, Meshes.MeshDyMaterial[Mesh]);
+							UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Name, 0, Meshes.MeshDyMaterial[Mesh]);
 						}
 					}
 				}
@@ -166,21 +168,19 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 			{
 				for (auto E : It.Key()->Keys) //处理结束时才执行的 Key
 				{
-					if (!E.bSetAtEnd) continue;
 					if (auto Prop = UToShaderSubsystem::GetSubsystem()->GetMP(E.Name, EMPType::Key);
 						Prop->CustomPrimitiveDataIndex != -1)
 					{
 						for (auto Mesh : MeshTags[CurModifyTag].Components)
 						{
-							Mesh->SetCustomPrimitiveDataFloat(Prop->CustomPrimitiveDataIndex, E.bIsEnabled ? 1 : 0);
+							Mesh->SetCustomPrimitiveDataFloat(Prop->CustomPrimitiveDataIndex, 1);
 						}
 					}
 					else
 					{
 						for (auto Mesh : MeshTags[CurModifyTag].Components)
 						{
-							UToShaderHelpers::setDynamicMaterialGroupFloatParam(
-								E.Name, E.bIsEnabled ? 1 : 0, Meshes.MeshDyMaterial[Mesh]);
+							UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Name, 1, Meshes.MeshDyMaterial[Mesh]);
 						}
 					}
 				}
@@ -195,7 +195,6 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 		//遍历last并作比较同时 更新Last 修改数据 
 		for (auto& E : LastMPD[CurModifyTag].Floats)
 		{
-			if (E.Key.bSetAtEndOfAnim) continue; //Key的特殊规则
 			float TargetVal;
 			if (CurMPD.Floats.Contains(E.Key))
 				TargetVal = CurMPD.Floats[E.Key];
@@ -204,14 +203,10 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 			if (!FMath::IsNearlyEqual(E.Value, TargetVal))
 			{
 				tolog(E.Key.Name.ToString() + " : ", E.Value);
-				if (E.Key.bIsKey)
-				{
+				if (E.Key.bIsKey) //为key时直接设置val
 					E.Value = TargetVal;
-				}
 				else
-				{
 					E.Value = FMath::Lerp(E.Value, TargetVal, 0.1f);
-				}
 				if (E.Key.CustomPrimitiveIndex != -1)
 				{
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
@@ -223,8 +218,7 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 				{
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
 					{
-						UToShaderHelpers::setDynamicMaterialGroupFloatParam(
-							E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+						UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
 					}
 				}
 			}

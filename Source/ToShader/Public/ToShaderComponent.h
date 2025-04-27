@@ -49,6 +49,7 @@ protected:
 	virtual void DestroyComponent(bool bPromoteChildren = false) override;
 
 private:
+	bool bHasBeginPlay = false;
 	UToShaderSubsystem* GetSubsystem();
 
 	void Init();
