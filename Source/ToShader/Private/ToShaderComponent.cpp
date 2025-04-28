@@ -153,7 +153,10 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 							UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Name, 0, Meshes.MeshDyMaterial[Mesh]);
 						}
 					}
+					//修改LastGroup
+					LastMPD[CurModifyTag].Floats[FMPDKey(E.Name)] = 0;
 				}
+				
 				RemoveList.Add(D.Key);
 			}
 		}
@@ -181,7 +184,7 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 				TargetVal = 0;//CustomPrimitiveData的默认值都是0
 			if (!FMath::IsNearlyEqual(E.Value, TargetVal))
 			{
-				// tolog(E.Key.Name.ToString() + " : ", E.Value);
+				//tolog(E.Key.Name.ToString() + " : ", E.Value);
 				if (E.Key.bIsKey) //为key时直接设置val
 					E.Value = TargetVal;
 				else

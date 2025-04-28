@@ -118,7 +118,6 @@ void UMaterialEffectLib::CombineMPD(FMPDGroup& CurMPD, const FMPDGroup& EffectMP
 			if (!CurMPD.Floats.Contains(E.Key))
 			{
 				CurMPD.Floats.Emplace(E.Key, E.Value);
-				tolog(E.Key.Name.ToString()+" ",E.Value);
 			}
 		}
 	}
@@ -147,6 +146,7 @@ void UMaterialEffectLib::CombineMPD(FMPDGroup& CurMPD, const FMPDGroup& EffectMP
 void UMaterialEffectLib::CacheLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGroup& LastGroup, const FEffectData& InNewEffect)
 {
 	if (!Mesh) return;
+	//tolog("LastGroupFloat Num ",LastGroup.Floats.Num());
 	if (!InNewEffect.Group.Floats.IsEmpty())
 	{
 		for (auto Element : InNewEffect.Group.Floats)
