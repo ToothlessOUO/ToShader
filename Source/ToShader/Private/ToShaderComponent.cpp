@@ -31,7 +31,7 @@ void UToShaderComponent::ApplyNewEffect(UEffectDataAsset* NewEffect)
 	NewEffect->Counter = MPDCounter[Tag];
 	MaterialEffectData[Tag].Emplace(NewEffect, NewEffectData);
 	//将新元素加载进LastGroup
-	UMaterialEffectLib::AddLastMPDGroupProp(GetFirstMeshTag(Tag), LastMPD[Tag], NewEffectData);
+	UMaterialEffectLib::CacheLastMPDGroupProp(GetFirstMeshTag(Tag), LastMPD[Tag], NewEffectData);
 	//整理优先级
 	UMaterialEffectLib::SortEffectDataMap(MaterialEffectData[Tag]);
 }
@@ -129,7 +129,6 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 {
 	for (auto& Data : MaterialEffectData)
 	{
-		//Update Data and
 		auto CurModifyTag = Data.Key;
 		FMPDGroup CurMPD;
 		TArray<UEffectDataAsset*> RemoveList;
@@ -158,35 +157,15 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 				RemoveList.Add(D.Key);
 			}
 		}
-		for (auto E : RemoveList)
+		if (!RemoveList.IsEmpty())
 		{
-			Data.Value.Remove(E);
-		}
-		for (auto It = Data.Value.CreateIterator(); It; ++It)
-		{
-			if (UMaterialEffectLib::IsEffectDataEnd(Dt, It.Key(), It.Value()))
+			for (auto E : RemoveList)
 			{
-				for (auto E : It.Key()->Keys) //处理结束时才执行的 Key
-				{
-					if (auto Prop = UToShaderSubsystem::GetSubsystem()->GetMP(E.Name, EMPType::Key);
-						Prop->CustomPrimitiveDataIndex != -1)
-					{
-						for (auto Mesh : MeshTags[CurModifyTag].Components)
-						{
-							Mesh->SetCustomPrimitiveDataFloat(Prop->CustomPrimitiveDataIndex, 1);
-						}
-					}
-					else
-					{
-						for (auto Mesh : MeshTags[CurModifyTag].Components)
-						{
-							UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Name, 1, Meshes.MeshDyMaterial[Mesh]);
-						}
-					}
-				}
-				It.RemoveCurrent(); // 安全删除当前元素
+				Data.Value.Remove(E);
 			}
+			UMaterialEffectLib::SortEffectDataMap(Data.Value);//更新排序
 		}
+		if(Data.Value.IsEmpty()) continue;
 		for (auto& E : Data.Value)
 		{
 			UMaterialEffectLib::UpdateEffectData(Dt, E.Key, E.Value);
@@ -198,11 +177,11 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 			float TargetVal;
 			if (CurMPD.Floats.Contains(E.Key))
 				TargetVal = CurMPD.Floats[E.Key];
-			else //CustomPrimitiveData的默认值都是0
-				TargetVal = 0;
+			else 
+				TargetVal = 0;//CustomPrimitiveData的默认值都是0
 			if (!FMath::IsNearlyEqual(E.Value, TargetVal))
 			{
-				tolog(E.Key.Name.ToString() + " : ", E.Value);
+				// tolog(E.Key.Name.ToString() + " : ", E.Value);
 				if (E.Key.bIsKey) //为key时直接设置val
 					E.Value = TargetVal;
 				else
@@ -240,16 +219,14 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 				{
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
 					{
-						Mesh->SetCustomPrimitiveDataVector4(E.Key.CustomPrimitiveIndex,
-						                                    FVector4(E.Value.X, E.Value.Y, E.Value.Z, E.Value.W));
+						Mesh->SetCustomPrimitiveDataVector4(E.Key.CustomPrimitiveIndex,FVector4(E.Value.X, E.Value.Y, E.Value.Z, E.Value.W));
 					}
 				}
 				else
 				{
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
 					{
-						UToShaderHelpers::setDynamicMaterialGroupFloat4Param(
-							E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+						UToShaderHelpers::setDynamicMaterialGroupFloat4Param(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
 					}
 				}
 			}
@@ -266,8 +243,7 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 				E.Value = TargetVal;
 				for (auto Mesh : MeshTags[CurModifyTag].Components)
 				{
-					UToShaderHelpers::setDynamicMaterialGroupTextureParam(
-						E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+					UToShaderHelpers::setDynamicMaterialGroupTextureParam(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
 				}
 			}
 		}

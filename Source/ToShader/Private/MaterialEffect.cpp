@@ -42,7 +42,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			if (!K.Curve) continue;
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float);
-			FMPDKey Key{K.Name,  R->CustomPrimitiveDataIndex};
+			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Floats.Emplace(Key, K.Curve->GetFloatValue(0) * K.CurveScale);
 		}
 	}
@@ -81,7 +81,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			if (!K.Tex) continue;
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Texture);
-			FMPDKey Key{K.Name,  R->CustomPrimitiveDataIndex};
+			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Textures.Emplace(Key, K.Tex);
 		}
 	}
@@ -98,8 +98,14 @@ void UMaterialEffectLib::SortEffectDataMap(TMap<UEffectDataAsset*, FEffectData>&
 		{
 			return A.EffectPriority > B.EffectPriority;
 		}
-		return A.Counter > B.Counter;
+		return A.Counter < B.Counter;//先加入优先级越高
 	});
+	// tolog("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv");
+	// for (auto Element : M)
+	// {
+	// 	tolog(Element.Key->EffectName.ToString());
+	// }
+	// tolog("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 }
 
 void UMaterialEffectLib::CombineMPD(FMPDGroup& CurMPD, const FMPDGroup& EffectMPD)
@@ -112,6 +118,7 @@ void UMaterialEffectLib::CombineMPD(FMPDGroup& CurMPD, const FMPDGroup& EffectMP
 			if (!CurMPD.Floats.Contains(E.Key))
 			{
 				CurMPD.Floats.Emplace(E.Key, E.Value);
+				tolog(E.Key.Name.ToString()+" ",E.Value);
 			}
 		}
 	}
@@ -137,8 +144,7 @@ void UMaterialEffectLib::CombineMPD(FMPDGroup& CurMPD, const FMPDGroup& EffectMP
 	}
 }
 
-void UMaterialEffectLib::AddLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGroup& LastGroup,
-                                             const FEffectData& InNewEffect)
+void UMaterialEffectLib::CacheLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGroup& LastGroup, const FEffectData& InNewEffect)
 {
 	if (!Mesh) return;
 	if (!InNewEffect.Group.Floats.IsEmpty())
@@ -160,18 +166,17 @@ void UMaterialEffectLib::AddLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGrou
 			{
 				if (const auto M = Mesh->GetMaterial(0))
 				{
-					FMaterialParameterInfo ParamInfo(Element.Key.Name);
-					if (M->GetScalarParameterValue(ParamInfo, Ori))
+					if (M->GetScalarParameterValue(FMaterialParameterInfo(Element.Key.Name), Ori))
 					{
 						bIsValid = true;
 					}
 				}
 			}
+			FMPDKey NewOriKey = Element.Key;
 			if (bIsValid)
-			{
-				FMPDKey NewOriKey = Element.Key;
 				LastGroup.Floats.Emplace(NewOriKey, Ori);
-			}
+			else
+				LastGroup.Floats.Emplace(NewOriKey, 0);
 		}
 	}
 	if (!InNewEffect.Group.Float4s.IsEmpty())
@@ -197,18 +202,19 @@ void UMaterialEffectLib::AddLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGrou
 			{
 				if (const auto M = Mesh->GetMaterial(0))
 				{
-					FMaterialParameterInfo ParamInfo(Element.Key.Name);
-					if (M->GetVectorParameterValue(ParamInfo, Ori))
+					if (M->GetVectorParameterValue(FMaterialParameterInfo(Element.Key.Name), Ori))
 					{
 						bIsValid = true;
 					}
 				}
 			}
+			FMPDKey NewOriKey = Element.Key;
 			if (bIsValid)
-			{
-				FMPDKey NewOriKey = Element.Key;
-				LastGroup.Float4s.Emplace(NewOriKey, FVector4(Ori.R, Ori.G, Ori.B, Ori.A));
-			}
+
+				LastGroup.Float4s.Emplace(NewOriKey, FVector4f(Ori.R, Ori.G, Ori.B, Ori.A));
+			else
+
+				LastGroup.Float4s.Emplace(NewOriKey, FVector4f::Zero());
 		}
 	}
 	if (!InNewEffect.Group.Textures.IsEmpty())
@@ -220,17 +226,16 @@ void UMaterialEffectLib::AddLastMPDGroupProp(UPrimitiveComponent* Mesh, FMPDGrou
 			UTexture* Ori;
 			if (const auto M = Mesh->GetMaterial(0))
 			{
-				FMaterialParameterInfo ParamInfo(Element.Key.Name);
-				if (M->GetTextureParameterValue(ParamInfo, Ori))
+				if (M->GetTextureParameterValue(FMaterialParameterInfo(Element.Key.Name), Ori))
 				{
 					bIsValid = Ori != nullptr;
 				}
 			}
+			FMPDKey NewOriKey = Element.Key;
 			if (bIsValid)
-			{
-				FMPDKey NewOriKey = Element.Key;
 				LastGroup.Textures.Emplace(NewOriKey, Ori);
-			}
+			else
+				LastGroup.Textures.Emplace(NewOriKey, nullptr);
 		}
 	}
 }
@@ -284,6 +289,7 @@ void UMaterialEffectLib::UpdateMPDGroup(UEffectDataAsset* Asset, FEffectData& Da
 void UMaterialEffectLib::UpdateEffectData(const float Dt, UEffectDataAsset* Asset, FEffectData& Data)
 {
 	Data.Timer += Dt;
+	//更新curve
 	UpdateMPDGroup(Asset, Data);
 }
 

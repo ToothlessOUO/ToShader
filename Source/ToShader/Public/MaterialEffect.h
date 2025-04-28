@@ -28,7 +28,6 @@ struct FMPTableProp : public FTableRowBase
 	EMPType Type = EMPType::Float;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int CustomPrimitiveDataIndex = -1;
-	//CustomPrimitiveData的默认值都是0！！
 };
 #pragma endregion
 
@@ -209,7 +208,7 @@ class TOSHADER_API UMaterialEffectLib : public UBlueprintFunctionLibrary
 	static void UpdateMPDGroup(UEffectDataAsset* Asset,FEffectData& Data);
 public:
 	static void SortEffectDataMap(TMap<UEffectDataAsset*,FEffectData>& M);
-	static void AddLastMPDGroupProp(UPrimitiveComponent* Mesh,FMPDGroup& LastGroup,const FEffectData& InNewEffect);
+	static void CacheLastMPDGroupProp(UPrimitiveComponent* Mesh,FMPDGroup& LastGroup,const FEffectData& InNewEffect);
 	//以下的bool valid一旦为false说明 Effect 不可用、已结束
 	static FEffectData MakeEffectData(UEffectDataAsset* Asset,bool& bIsValid);
 	static bool IsEffectDataEnd(float Dt, const UEffectDataAsset* Asset, const FEffectData& Data);
