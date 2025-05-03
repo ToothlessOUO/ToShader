@@ -28,6 +28,9 @@ struct FMPTableProp : public FTableRowBase
 	EMPType Type = EMPType::Float;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int CustomPrimitiveDataIndex = -1;
+	//是否暴露给MaterialEffect去配置
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bExposeToMaterialEffect = true;
 };
 #pragma endregion
 

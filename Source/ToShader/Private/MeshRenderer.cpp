@@ -1,6 +1,7 @@
 #include "MeshRenderer.h"
 #include "ToShader.h"
 #include "ToShaderSubsystem.h"
+#include "Components/PlaneReflectionCaptureComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 
 #pragma region MeshRenderer
@@ -39,6 +40,14 @@ void AMeshRenderer::SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewL
 	}
 }
 
+void AMeshRenderer::SetHiddenList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList)
+{
+	for (auto Capture : Captures)
+	{
+		Capture->HiddenComponents = NewList;
+	}
+}
+
 void AMeshRenderer::BeginPlay()
 {
 	Super::BeginPlay();
@@ -66,9 +75,10 @@ void AMeshRenderer::Setup()
 	for (const auto Component : Components)
 	{
 		if (!Component) continue;
-		auto Capture = Cast<USceneCaptureComponent2D>(Component);
+		auto Capture = Cast<USceneCaptureComponent>(Component);
 		if (!Capture) continue;
-		Capture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+		if (bUseShowOnlyList)
+			Capture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
 		Captures.Add(Capture);
 	}
 	//收集并注册至子系统

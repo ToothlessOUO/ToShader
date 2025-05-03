@@ -128,25 +128,29 @@ TArray<FName> UToShaderSubsystem::GetMaterialEffectPropertyTableRowNames(EMPType
 	case EMPType::Key:
 		for (auto Data : MPKeyCache)
 		{
-			RetArray.Emplace(Data.Key);
+			if (Data.Value->bExposeToMaterialEffect)
+				RetArray.Emplace(Data.Key);
 		}
 		break;
 	case EMPType::Float:
 		for (auto Data : MPFloatCache)
 		{
-			RetArray.Emplace(Data.Key);
+			if (Data.Value->bExposeToMaterialEffect)
+				RetArray.Emplace(Data.Key);
 		}
 		break;
 	case EMPType::Float4:
 		for (auto Data : MPFloat4Cache)
 		{
-			RetArray.Emplace(Data.Key);
+			if (Data.Value->bExposeToMaterialEffect)
+				RetArray.Emplace(Data.Key);
 		}
 		break;
 	case EMPType::Texture:
 		for (auto Data : MPTextureCache)
 		{
-			RetArray.Emplace(Data.Key);
+			if (Data.Value->bExposeToMaterialEffect)
+				RetArray.Emplace(Data.Key);
 		}
 		break;
 	}
@@ -156,21 +160,22 @@ TArray<FName> UToShaderSubsystem::GetMaterialEffectPropertyTableRowNames(EMPType
 
 FMPTableProp* UToShaderSubsystem::GetMP(const FName Name, const EMPType Type)
 {
-	switch (Type) {
+	switch (Type)
+	{
 	case EMPType::Key:
-		if(MPKeyCache.Contains(Name))
+		if (MPKeyCache.Contains(Name))
 			return MPKeyCache[Name];
 		break;
 	case EMPType::Float:
-		if(MPFloatCache.Contains(Name))
+		if (MPFloatCache.Contains(Name))
 			return MPFloatCache[Name];
 		break;
 	case EMPType::Float4:
-		if(MPFloat4Cache.Contains(Name))
+		if (MPFloat4Cache.Contains(Name))
 			return MPFloat4Cache[Name];
 		break;
 	case EMPType::Texture:
-		if(MPTextureCache.Contains(Name))
+		if (MPTextureCache.Contains(Name))
 			return MPTextureCache[Name];
 		break;
 	}
@@ -180,7 +185,7 @@ FMPTableProp* UToShaderSubsystem::GetMP(const FName Name, const EMPType Type)
 TArray<FName> UToShaderSubsystem::GetMaterialEffectTag()
 {
 	TArray<FName> Res;
-	for (auto E :MaterialEffectTagNames )
+	for (auto E : MaterialEffectTagNames)
 	{
 		Res.Emplace(E.Value);
 	}
@@ -202,11 +207,6 @@ void UToShaderSubsystem::Deinitialize()
 	FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 }
 
-void UToShaderSubsystem::SetShowList(AMeshRenderer* MeshRenderer)
-{
-	MeshRenderer->SetShowList(GetShowList(MeshRenderer->TargetMeshTags.Array()));
-}
-
 void UToShaderSubsystem::UpdateMeshRenderersShowLists()
 {
 	if (!bShouldUpdateMeshRenderers) return;
@@ -218,23 +218,42 @@ void UToShaderSubsystem::UpdateMeshRenderersShowLists()
 	TMap<ERendererTag, FShowList> SavedList;
 	for (auto Renderer : MeshRenderers)
 	{
-		FShowList CurList;
-		if (Renderer->TargetMeshTags.IsEmpty()) continue;
-
-		for (ERendererTag Tag : Renderer->TargetMeshTags)
+		if (!Renderer->TargetMeshTags.IsEmpty())
 		{
-			if (SavedList.Contains(Tag))
+			FShowList CurList;
+			for (ERendererTag Tag : Renderer->TargetMeshTags)
 			{
-				CurList.List.Append(SavedList[Tag].List);
+				if (SavedList.Contains(Tag))
+				{
+					CurList.List.Append(SavedList[Tag].List);
+				}
+				else
+				{
+					auto NewList = GetShowList(Tag);
+					CurList.List.Append(NewList);
+					SavedList.Emplace(Tag, NewList);
+				}
 			}
-			else
-			{
-				auto NewList = GetShowList(Tag);
-				CurList.List.Append(NewList);
-				SavedList.Emplace(Tag, NewList);
-			}
+			Renderer->SetShowList(CurList.List);
 		}
-		Renderer->SetShowList(CurList.List);
+		if (!Renderer->HiddenMeshTags.IsEmpty())
+		{
+			FShowList CurList;
+			for (ERendererTag Tag : Renderer->HiddenMeshTags)
+			{
+				if (SavedList.Contains(Tag))
+				{
+					CurList.List.Append(SavedList[Tag].List);
+				}
+				else
+				{
+					auto NewList = GetShowList(Tag);
+					CurList.List.Append(NewList);
+					SavedList.Emplace(Tag, NewList);
+				}
+			}
+			Renderer->SetHiddenList(CurList.List);
+		}
 	}
 	bShouldUpdateMeshRenderers = false;
 }
@@ -293,16 +312,16 @@ void UToShaderSubsystem::UpdateMaterialEffectPropertyTable()
 		switch (RowData->Type)
 		{
 		case EMPType::Key:
-			MPKeyCache.Add(RowName,RowData);
+			MPKeyCache.Add(RowName, RowData);
 			break;
 		case EMPType::Float:
-			MPFloatCache.Add(RowName,RowData);
+			MPFloatCache.Add(RowName, RowData);
 			break;
 		case EMPType::Float4:
-			MPFloat4Cache.Add(RowName,RowData);
+			MPFloat4Cache.Add(RowName, RowData);
 			break;
 		case EMPType::Texture:
-			MPTextureCache.Add(RowName,RowData);
+			MPTextureCache.Add(RowName, RowData);
 			break;
 		}
 	}

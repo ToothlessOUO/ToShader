@@ -13,20 +13,26 @@ class TOSHADER_API AMeshRenderer : public AActor
 
 public:
 	AMeshRenderer();
-	
+
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="MeshRenderer")
+	bool bUseShowOnlyList = true;
 	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="MeshRenderer")
 	TSet<ERendererTag> TargetMeshTags;
+	UPROPERTY(EditDefaultsOnly,BlueprintReadWrite,Category="MeshRenderer")
+	TSet<ERendererTag> HiddenMeshTags;
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="MeshRenderer",
 		meta=(ToolTip="开启后默认会启用actor tick，其他情况下使用也需要确保tick开启"))
 	bool bShouldFollowTheView = false;
 
 	UPROPERTY(BlueprintReadOnly)
-	TArray<USceneCaptureComponent2D*> Captures;
+	TArray<USceneCaptureComponent*> Captures;
 	
 	UFUNCTION(BlueprintCallable,BlueprintPure)
 	TArray<UPrimitiveComponent*> GetShowList();
 	
 	virtual void SetShowList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList);
+	virtual void SetHiddenList(TArray<TWeakObjectPtr<UPrimitiveComponent>> NewList);
+	
 
 protected:
 	virtual void BeginPlay() override;
@@ -38,7 +44,6 @@ protected:
 	UToShaderSubsystem* GetSubsystem();
 	void UpdateTransform();
 };
-
 
 UCLASS()
 class TOSHADER_API AScreenOverlayMesh : public AActor

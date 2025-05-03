@@ -35,10 +35,12 @@ class TOSHADER_API UToShaderComponent : public UActorComponent
 public:
 	
 	UToShaderComponent();
-
+	
 	UPROPERTY()
 	TMap<ERendererTag,FMeshGroup> RendererGroup;
-
+	
+	UPROPERTY(visibleAnywhere, BlueprintReadWrite)
+	UEffectDataAsset* PreviewEffect;
 	UFUNCTION(BlueprintCallable)
 	void ApplyNewEffect(UEffectDataAsset* NewEffect);
 
@@ -65,6 +67,7 @@ private:
 	TMap<FName,FMPDGroup> LastMPD;
 	TMap<FName,int> MPDCounter;
 	void UpdateMaterialEffect(float Dt);
+	void UpdatePreviewEffect();
 };
 
 #pragma endregion

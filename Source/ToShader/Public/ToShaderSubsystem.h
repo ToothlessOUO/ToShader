@@ -58,7 +58,7 @@ UENUM(BlueprintType)
 enum class ERendererTag : uint8
 {
 	EyeBrow,Face,Hair,
-	VisInCaptureOnly,HairMask,FaceMask,EyeBrowMask,
+	VisInCaptureOnly,HairMask,FaceMask,EyeBrowMask,Outline,
 	ScreenOverlay,
 	Max
 };
@@ -75,7 +75,7 @@ enum class ERTSizeScale : uint8
 UENUM(BlueprintType)
 enum class EMaterialEffectActionScope : uint8
 {
-	Body,Weapon,Outline,OutlineOverlay,
+	Body,Weapon,Outline,Overlay,
 	PP_Uber,
 	Max
 };

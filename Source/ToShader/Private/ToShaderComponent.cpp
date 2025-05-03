@@ -252,6 +252,10 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 		}
 	}
 }
+
+void UToShaderComponent::UpdatePreviewEffect()
+{
+}
 #pragma endregion
 
 #pragma region AlwaysTickComponent
