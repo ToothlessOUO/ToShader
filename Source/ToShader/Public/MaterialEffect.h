@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "ToStructs.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "MaterialEffect.generated.h"
 
@@ -7,6 +8,7 @@ class UMaterialEffectLib;
 class UEffectDataAsset;
 
 #pragma region MPDTable
+
 UENUM(BlueprintType)
 enum class EMPType : uint8
 {
@@ -31,6 +33,8 @@ struct FMPTableProp : public FTableRowBase
 	//是否暴露给MaterialEffect去配置
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bExposeToMaterialEffect = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EMaterialEffectActionScope ActionScope;
 };
 #pragma endregion
 
@@ -154,20 +158,15 @@ class TOSHADER_API UEffectDataAsset : public UPrimaryDataAsset
 public:
 	UPROPERTY(EditDefaultsOnly)
 	FName EffectName;
-	UPROPERTY(EditDefaultsOnly ,meta=(GetOptions="ToShader.MaterialEffectLib.MaterialEffect_GetValidName_Tag"))
-	FName Tag;
+	UPROPERTY(EditDefaultsOnly)
+	EMaterialEffectActionScope ActionScope = EMaterialEffectActionScope::Outline;
 	UPROPERTY(EditDefaultsOnly)
 	EMaterialEffectPriority EffectPriority = EMaterialEffectPriority::Normal;
 	UPROPERTY(EditDefaultsOnly)
 	float Duration;
 	UPROPERTY(EditDefaultsOnly)
 	bool bIsLoop;
-
-	UPROPERTY(EditDefaultsOnly)
-	bool bUseEffectMeshTags;
-	UPROPERTY(EditDefaultsOnly, meta=(EditCondition="bUseEffectMeshTags", EditConditionHides))
-	TSet<FString> MeshTags;
-
+	
 	UPROPERTY(EditDefaultsOnly)
 	TArray<FMPKey> Keys;
 	UPROPERTY(EditDefaultsOnly)
@@ -206,7 +205,7 @@ UCLASS()
 class TOSHADER_API UMaterialEffectLib : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
-	
+	static FMPDGroup Log_CannotFindInDataTable(FName Name,bool& bIsValid);
 	static FMPDGroup MakeMPDGroup(UEffectDataAsset* Asset,bool& bIsValid);
 	static void UpdateMPDGroup(UEffectDataAsset* Asset,FEffectData& Data);
 public:

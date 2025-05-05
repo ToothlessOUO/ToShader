@@ -11,8 +11,11 @@ UToShaderComponent::UToShaderComponent()
 void UToShaderComponent::ApplyNewEffect(UEffectDataAsset* NewEffect)
 {
 	if (!NewEffect || !bHasBeginPlay) return;
-	if (!MeshTags.Contains(NewEffect->Tag)) return; //所有需要的Mesh请务必提前在Actor中添加并设置好，避免运行时开销
-	const auto Tag = NewEffect->Tag;
+	if (NewEffect->ActionScope > EMaterialEffectActionScope::Outline) return;
+	const int ASID = (int)NewEffect->ActionScope;
+	const FName ASName = GetSubsystem()->GetMaterialEffectTag()[ASID];
+	if (!MeshTags.Contains(ASName)) return; //所有需要的Mesh请务必提前在Actor中添加并设置好，避免运行时开销
+	const auto Tag = ASName;
 	if (!MaterialEffectData.Contains(Tag))
 	{
 		MaterialEffectData.Emplace(Tag);
@@ -74,8 +77,8 @@ void UToShaderComponent::CacheMeshTags()
 	MeshTags.Empty();
 
 	if (!GetOwner()) return;
-	TArray<UPrimitiveComponent*> M;
-	GetOwner()->GetComponents<UPrimitiveComponent>(M);
+	TArray<UMeshComponent*> M;
+	GetOwner()->GetComponents<UMeshComponent>(M);
 	for (auto Element : M)
 	{
 		if (!Element) continue;
@@ -84,6 +87,11 @@ void UToShaderComponent::CacheMeshTags()
 		{
 			Meshes.MeshDyMaterial.Emplace(Element);
 			Meshes.MeshDyMaterial[Element] = UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(Element);
+			if (Element->OverlayMaterial!=nullptr)
+			{
+				Meshes.OverlayMaterials.Emplace(Element);
+				Meshes.OverlayMaterials[Element] = UToShaderHelpers::makeAndApplyMeshOverlayMaterialDynamic(Element);
+			}
 		}
 		for (auto Tag : Element->ComponentTags)
 		{
@@ -156,9 +164,9 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 					//修改LastGroup
 					LastMPD[CurModifyTag].Floats[FMPDKey(E.Name)] = 0;
 				}
-				
-				RemoveList.Add(D.Key);
+				RemoveList.Emplace(D.Key);
 			}
+			if (D.Key==nullptr) RemoveList.Emplace(nullptr);
 		}
 		if (!RemoveList.IsEmpty())
 		{
@@ -201,6 +209,13 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
 					{
 						UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+						if (Mesh->OverlayMaterial!=nullptr)//设置覆层参数
+						{
+							if (Meshes.OverlayMaterials.Contains(Mesh))
+							{
+								Meshes.OverlayMaterials[Mesh]->SetScalarParameterValue(E.Key.Name, E.Value);
+							}
+						}
 					}
 				}
 			}
@@ -230,6 +245,13 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
 					{
 						UToShaderHelpers::setDynamicMaterialGroupFloat4Param(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+						if (Mesh->OverlayMaterial!=nullptr)
+						{
+							if (Meshes.OverlayMaterials.Contains(Mesh))
+							{
+								Meshes.OverlayMaterials[Mesh]->SetVectorParameterValue(E.Key.Name, E.Value);
+							}
+						}
 					}
 				}
 			}
@@ -247,15 +269,19 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 				for (auto Mesh : MeshTags[CurModifyTag].Components)
 				{
 					UToShaderHelpers::setDynamicMaterialGroupTextureParam(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+					if (Mesh->OverlayMaterial!=nullptr)
+					{
+						if (Meshes.OverlayMaterials.Contains(Mesh))
+						{
+							Meshes.OverlayMaterials[Mesh]->SetTextureParameterValue(E.Key.Name, E.Value);
+						}
+					}
 				}
 			}
 		}
 	}
 }
 
-void UToShaderComponent::UpdatePreviewEffect()
-{
-}
 #pragma endregion
 
 #pragma region AlwaysTickComponent

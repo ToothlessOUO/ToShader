@@ -24,6 +24,7 @@ class TOSHADER_API UToShaderHelpers : public UBlueprintFunctionLibrary
 	static bool isEditor();
 	//Convert all material of mesh to dynamic material instance if it is not dynamic
 	static FDynamicMaterialGroup makeAndApplyMeshMaterialsDynamic(UPrimitiveComponent* mesh);
+	static UMaterialInstanceDynamic* makeAndApplyMeshOverlayMaterialDynamic(UMeshComponent* mesh);
 	static void setDynamicMaterialGroupFloatParam(FName name,float val,const FDynamicMaterialGroup& group);
 	static void setDynamicMaterialGroupFloat4Param(FName name,FVector4f val,const FDynamicMaterialGroup& group);
 	static void setDynamicMaterialGroupTextureParam(FName name,UTexture* val,const FDynamicMaterialGroup& group);

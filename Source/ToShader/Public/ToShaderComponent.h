@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MaterialEffect.h"
 #include "ToShaderSubsystem.h"
+#include "ToStructs.h"
 #include "Components/ActorComponent.h"
 #include "ToShaderComponent.generated.h"
 
@@ -27,20 +29,17 @@ public:
 #pragma endregion
 
 #pragma region ToShaderComponent
-UCLASS(ClassGroup=(Custom),BlueprintType,Blueprintable, meta=(BlueprintSpawnableComponent))
+UCLASS(ClassGroup=(Custom), BlueprintType, Blueprintable, meta=(BlueprintSpawnableComponent))
 class TOSHADER_API UToShaderComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
-	
 	UToShaderComponent();
-	
+
 	UPROPERTY()
-	TMap<ERendererTag,FMeshGroup> RendererGroup;
+	TMap<ERendererTag, FMeshGroup> RendererGroup;
 	
-	UPROPERTY(visibleAnywhere, BlueprintReadWrite)
-	UEffectDataAsset* PreviewEffect;
 	UFUNCTION(BlueprintCallable)
 	void ApplyNewEffect(UEffectDataAsset* NewEffect);
 
@@ -57,17 +56,16 @@ private:
 	void Init();
 
 	FMeshGroupDyMat Meshes;
-	TMap<FName,FMeshGroup> MeshTags;
+	TMap<FName, FMeshGroup> MeshTags;
 	void CacheMeshTags();
 
 	void CollectTargetsAndCallSubsystem();
 
 	UPrimitiveComponent* GetFirstMeshTag(FName Tag);
-	TMap<FName,TMap<UEffectDataAsset*,FEffectData>> MaterialEffectData;
-	TMap<FName,FMPDGroup> LastMPD;
-	TMap<FName,int> MPDCounter;
+	TMap<FName, TMap<UEffectDataAsset*, FEffectData>> MaterialEffectData;
+	TMap<FName, FMPDGroup> LastMPD;
+	TMap<FName, int> MPDCounter;
 	void UpdateMaterialEffect(float Dt);
-	void UpdatePreviewEffect();
 };
 
 #pragma endregion
@@ -81,6 +79,7 @@ class TOSHADER_API UToAlwaysTickComponent : public UActorComponent
 
 public:
 	UToAlwaysTickComponent();
+
 protected:
 	virtual void PostInitProperties() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

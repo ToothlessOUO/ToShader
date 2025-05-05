@@ -287,7 +287,7 @@ void UToShaderSubsystem::CacheTagNames()
 void UToShaderSubsystem::UpdateMaterialEffectPropertyTable()
 {
 	if (MaterialEffectPropertyTable.IsValid()) return;
-	const FString DataTablePath = TEXT("/ToShader/DataTable/DT_MaterialEffectProperty.DT_MaterialEffectProperty");
+	const FString DataTablePath = TEXT("/ToShader/Data/DT_MaterialEffectProperty.DT_MaterialEffectProperty");
 	UDataTable* Table = LoadObject<UDataTable>(nullptr, *DataTablePath);
 	if (!Table)
 	{

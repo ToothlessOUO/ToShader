@@ -151,6 +151,16 @@ FDynamicMaterialGroup UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(UPrimit
 	return Group;
 }
 
+UMaterialInstanceDynamic* UToShaderHelpers::makeAndApplyMeshOverlayMaterialDynamic(UMeshComponent* mesh)
+{
+	if (mesh->OverlayMaterial == nullptr) return nullptr;
+	if (mesh->OverlayMaterial->IsA(UMaterialInstanceDynamic::StaticClass()))
+		return Cast<UMaterialInstanceDynamic>(mesh->OverlayMaterial);
+	auto DyM = UMaterialInstanceDynamic::Create(mesh->OverlayMaterial,mesh);
+	mesh->SetOverlayMaterial(DyM);
+	return DyM;
+}
+
 void UToShaderHelpers::setDynamicMaterialGroupFloatParam(FName name, const float val,const FDynamicMaterialGroup& group)
 {
 	for (auto M : group.Materials)

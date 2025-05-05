@@ -10,6 +10,13 @@ void UEffectDataAsset::PostEditChangeProperty(struct FPropertyChangedEvent& Prop
 	UToShaderSubsystem::GetSubsystem()->CallUpdate_MaterialEffectPropertyTable();
 }
 
+FMPDGroup UMaterialEffectLib::Log_CannotFindInDataTable(FName Name,bool& bIsValid)
+{
+	tolog("Can't find in MPDataTable : "+Name.ToString());
+	bIsValid = false;
+	return FMPDGroup();
+}
+
 FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsValid)
 {
 	bIsValid = false;
@@ -22,6 +29,10 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		for (const auto K : Asset->Keys)
 		{
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Key);
+			if (!R)
+			{
+				return Log_CannotFindInDataTable(K.Name, bIsValid);
+			}
 			bool bIsKey = R->Type == EMPType::Key;
 			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex, bIsKey};
 			MPD.Floats.Emplace(Key, 1);
@@ -32,6 +43,10 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		for (const auto K : Asset->Floats)
 		{
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float);
+			if (!R)
+			{
+				return Log_CannotFindInDataTable(K.Name, bIsValid);
+			}
 			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Floats.Emplace(Key, K.Val);
 		}
@@ -42,6 +57,10 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			if (!K.Curve) continue;
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float);
+			if (!R)
+			{
+				return Log_CannotFindInDataTable(K.Name, bIsValid);
+			}
 			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Floats.Emplace(Key, K.Curve->GetFloatValue(0) * K.CurveScale);
 		}
@@ -51,6 +70,10 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		for (const auto K : Asset->Vectors)
 		{
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float4);
+			if (!R)
+			{
+				return Log_CannotFindInDataTable(K.Name, bIsValid);
+			}
 			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Float4s.Emplace(Key, FVector4f(K.Val.X, K.Val.Y, K.Val.Z, 1));
 		}
@@ -60,6 +83,10 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		for (const auto K : Asset->Colors)
 		{
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float4);
+			if (!R)
+			{
+				return Log_CannotFindInDataTable(K.Name, bIsValid);
+			}
 			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Float4s.Emplace(Key, FVector4f(K.Val.R, K.Val.G, K.Val.B, K.Val.A));
 		}
@@ -70,6 +97,10 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			if (!K.Curve) continue;
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float4);
+			if (!R)
+			{
+				return Log_CannotFindInDataTable(K.Name, bIsValid);
+			}
 			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			auto Color = K.Curve->GetLinearColorValue(0);
 			MPD.Float4s.Emplace(Key, FVector4f(Color.R, Color.G, Color.B, Color.A) * K.CurveScale);
@@ -81,6 +112,10 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 		{
 			if (!K.Tex) continue;
 			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Texture);
+			if (!R)
+			{
+				return Log_CannotFindInDataTable(K.Name, bIsValid);
+			}
 			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex};
 			MPD.Textures.Emplace(Key, K.Tex);
 		}
@@ -267,7 +302,6 @@ void UMaterialEffectLib::UpdateMPDGroup(UEffectDataAsset* Asset, FEffectData& Da
 		for (const auto K : Asset->FloatCurves)
 		{
 			if (!K.Curve) continue;
-			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float);
 			FMPDKey Key{K.Name};
 			Data.Group.Floats[Key] = K.Curve->GetFloatValue(K.bUseNormalizedDuration ? NormalizedT : T) * K.CurveScale;
 		}
@@ -277,7 +311,6 @@ void UMaterialEffectLib::UpdateMPDGroup(UEffectDataAsset* Asset, FEffectData& Da
 		for (const auto K : Asset->ColorCurves)
 		{
 			if (!K.Curve) continue;
-			auto R = UToShaderSubsystem::GetSubsystem()->GetMP(K.Name, EMPType::Float4);
 			FMPDKey Key{K.Name};
 			auto Color = K.Curve->GetLinearColorValue(K.bUseNormalizedDuration ? NormalizedT : T);
 			Data.Group.Float4s[Key] = FVector4f(Color.R, Color.G, Color.B, Color.A) * K.CurveScale;
