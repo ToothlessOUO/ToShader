@@ -170,7 +170,7 @@ void UToShaderHelpers::setDynamicMaterialGroupFloatParam(FName name, const float
 	}
 }
 
-void UToShaderHelpers::setDynamicMaterialGroupFloat4Param(FName name, FVector4f val, const FDynamicMaterialGroup& group)
+void UToShaderHelpers::setDynamicMaterialGroupFloat3Param(FName name, FVector val, const FDynamicMaterialGroup& group)
 {
 	for (auto M : group.Materials)
 	{

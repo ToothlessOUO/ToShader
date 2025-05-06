@@ -57,6 +57,7 @@ private:
 	void SetShowList(AMeshRenderer* MeshRenderer);
 	void UpdateMeshRenderersShowLists();
 
+	//不同的系統可能使用不同的Enum，但是Enum对应的tag都是一样的，Enum是tag的子集，XXXTagNames提前缓存了Enum和Tag之间的关系
 	void CacheTagNames();
 	
 	UPROPERTY()
@@ -68,7 +69,7 @@ private:
 	TMap<EMaterialEffectActionScope,FName> MaterialEffectTagNames;
 	TMap<FName,FMPTableProp*> MPKeyCache;
 	TMap<FName,FMPTableProp*> MPFloatCache;
-	TMap<FName,FMPTableProp*> MPFloat4Cache;
+	TMap<FName,FMPTableProp*> MPFloat3Cache;
 	TMap<FName,FMPTableProp*> MPTextureCache;
 	UPROPERTY()
 	TWeakObjectPtr<UDataTable> MaterialEffectPropertyTable;

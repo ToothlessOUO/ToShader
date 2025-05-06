@@ -87,7 +87,7 @@ void UToShaderComponent::CacheMeshTags()
 		{
 			Meshes.MeshDyMaterial.Emplace(Element);
 			Meshes.MeshDyMaterial[Element] = UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(Element);
-			if (Element->OverlayMaterial!=nullptr)
+			if (Element->OverlayMaterial != nullptr)
 			{
 				Meshes.OverlayMaterials.Emplace(Element);
 				Meshes.OverlayMaterials[Element] = UToShaderHelpers::makeAndApplyMeshOverlayMaterialDynamic(Element);
@@ -166,7 +166,7 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 				}
 				RemoveList.Emplace(D.Key);
 			}
-			if (D.Key==nullptr) RemoveList.Emplace(nullptr);
+			if (D.Key == nullptr) RemoveList.Emplace(nullptr);
 		}
 		if (!RemoveList.IsEmpty())
 		{
@@ -174,29 +174,30 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 			{
 				Data.Value.Remove(E);
 			}
-			UMaterialEffectLib::SortEffectDataMap(Data.Value);//更新排序
+			UMaterialEffectLib::SortEffectDataMap(Data.Value); //更新排序
 		}
-		if(Data.Value.IsEmpty()) continue;
+		if (Data.Value.IsEmpty()) continue;
 		for (auto& E : Data.Value)
 		{
 			UMaterialEffectLib::UpdateEffectData(Dt, E.Key, E.Value);
 			UMaterialEffectLib::CombineMPD(CurMPD, E.Value.Group);
 		}
-		//遍历last并作比较同时 更新Last 修改数据 
+		//遍历last并作比较同时 更新Last 修改数据
 		for (auto& E : LastMPD[CurModifyTag].Floats)
 		{
 			float TargetVal;
 			if (CurMPD.Floats.Contains(E.Key))
 				TargetVal = CurMPD.Floats[E.Key];
-			else 
-				TargetVal = 0;//CustomPrimitiveData的默认值都是0
+			else
+				TargetVal = 0; //CustomPrimitiveData的默认值都是0
 			if (!FMath::IsNearlyEqual(E.Value, TargetVal))
 			{
 				//tolog(E.Key.Name.ToString() + " : ", E.Value);
-				if (E.Key.bIsKey) //为key时直接设置val
+				if (E.Key.bExeImmediately) //直接设置val
 					E.Value = TargetVal;
 				else
 					E.Value = FMath::Lerp(E.Value, TargetVal, 0.1f);
+
 				if (E.Key.CustomPrimitiveIndex != -1)
 				{
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
@@ -209,49 +210,46 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
 					{
 						UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
-						if (Mesh->OverlayMaterial!=nullptr)//设置覆层参数
-						{
-							if (Meshes.OverlayMaterials.Contains(Mesh))
-							{
-								Meshes.OverlayMaterials[Mesh]->SetScalarParameterValue(E.Key.Name, E.Value);
-							}
-						}
+						//设置覆层参数
+						if (Mesh->OverlayMaterial == nullptr) continue;
+						if (!Meshes.OverlayMaterials.Contains(Mesh)) continue;
+						Meshes.OverlayMaterials[Mesh]->SetScalarParameterValue(E.Key.Name, E.Value);
 					}
 				}
 			}
 		}
-		for (auto& E : LastMPD[CurModifyTag].Float4s)
+		for (auto& E : LastMPD[CurModifyTag].Float3s)
 		{
-			FVector4f TargetVal;
-			if (CurMPD.Float4s.Contains(E.Key))
-				TargetVal = CurMPD.Float4s[E.Key];
+			FVector TargetVal;
+			if (CurMPD.Float3s.Contains(E.Key))
+				TargetVal = CurMPD.Float3s[E.Key];
 			else
-				TargetVal = FVector4f::Zero();
+				TargetVal = FVector::Zero();
 			if (!(FMath::IsNearlyEqual(E.Value.X, TargetVal.X)
 				&& FMath::IsNearlyEqual(E.Value.Y, TargetVal.Y)
-				&& FMath::IsNearlyEqual(E.Value.Z, TargetVal.Z)
-				&& FMath::IsNearlyEqual(E.Value.W, TargetVal.W)))
+				&& FMath::IsNearlyEqual(E.Value.Z, TargetVal.Z)))
 			{
-				E.Value = FMath::Lerp(E.Value, TargetVal, 0.1f);
+				if (E.Key.bExeImmediately)
+					E.Value = TargetVal;
+				else
+					E.Value = FMath::Lerp(E.Value, TargetVal, 0.1f);
+
 				if (E.Key.CustomPrimitiveIndex != -1)
 				{
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
 					{
-						Mesh->SetCustomPrimitiveDataVector4(E.Key.CustomPrimitiveIndex,FVector4(E.Value.X, E.Value.Y, E.Value.Z, E.Value.W));
+						Mesh->SetCustomPrimitiveDataVector3(E.Key.CustomPrimitiveIndex, FVector(E.Value.X, E.Value.Y, E.Value.Z));
 					}
 				}
 				else
 				{
 					for (auto Mesh : MeshTags[CurModifyTag].Components)
 					{
-						UToShaderHelpers::setDynamicMaterialGroupFloat4Param(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
-						if (Mesh->OverlayMaterial!=nullptr)
-						{
-							if (Meshes.OverlayMaterials.Contains(Mesh))
-							{
-								Meshes.OverlayMaterials[Mesh]->SetVectorParameterValue(E.Key.Name, E.Value);
-							}
-						}
+						UToShaderHelpers::setDynamicMaterialGroupFloat3Param(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
+
+						if (Mesh->OverlayMaterial == nullptr) continue;
+						if (!Meshes.OverlayMaterials.Contains(Mesh)) continue;
+						Meshes.OverlayMaterials[Mesh]->SetVectorParameterValue(E.Key.Name, E.Value);
 					}
 				}
 			}
@@ -269,13 +267,10 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 				for (auto Mesh : MeshTags[CurModifyTag].Components)
 				{
 					UToShaderHelpers::setDynamicMaterialGroupTextureParam(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
-					if (Mesh->OverlayMaterial!=nullptr)
-					{
-						if (Meshes.OverlayMaterials.Contains(Mesh))
-						{
-							Meshes.OverlayMaterials[Mesh]->SetTextureParameterValue(E.Key.Name, E.Value);
-						}
-					}
+
+					if (Mesh->OverlayMaterial == nullptr) continue;
+					if (!Meshes.OverlayMaterials.Contains(Mesh)) continue;
+					Meshes.OverlayMaterials[Mesh]->SetTextureParameterValue(E.Key.Name, E.Value);
 				}
 			}
 		}

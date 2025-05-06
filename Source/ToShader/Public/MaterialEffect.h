@@ -14,7 +14,7 @@ enum class EMPType : uint8
 {
 	Key,
 	Float,
-	Float4,
+	Float3,//float4被拆分为float3和一个float，提升利用率
 	Texture,
 };
 
@@ -28,7 +28,7 @@ struct FMPTableProp : public FTableRowBase
 	// FName Name;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EMPType Type = EMPType::Float;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) // 对于CustomPrimitiveData而言，Name并不是真正的Key
 	int CustomPrimitiveDataIndex = -1;
 	//是否暴露给MaterialEffect去配置
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -55,6 +55,8 @@ struct FMPFloat
 	FName Name;
 	UPROPERTY(EditAnywhere)
 	float Val;
+	UPROPERTY(EditAnywhere,DisplayName="立刻执行")
+	bool bExeImmediately = false;
 };
 
 USTRUCT(BlueprintType)
@@ -79,6 +81,8 @@ struct FMPVector
 	FName Name;
 	UPROPERTY(EditAnywhere)
 	FVector Val;
+	UPROPERTY(EditAnywhere,DisplayName="立刻执行")
+	bool bExeImmediately = false;
 };
 
 USTRUCT(BlueprintType)
@@ -89,6 +93,8 @@ struct FMPColor
 	FName Name;
 	UPROPERTY(EditAnywhere)
 	FLinearColor Val;
+	UPROPERTY(EditAnywhere,DisplayName="立刻执行")
+	bool bExeImmediately = false;
 };
 
 USTRUCT(BlueprintType)
@@ -121,7 +127,7 @@ struct FMPDKey
 {
 	FName Name;
 	int CustomPrimitiveIndex = -1;
-	bool bIsKey = false;
+	bool bExeImmediately = false;
 
 	bool operator==(const FMPDKey& Other) const
 	{
@@ -138,7 +144,7 @@ struct FMPDKey
 struct FMPDGroup
 {
 	TMap<FMPDKey, float>  Floats;
-	TMap<FMPDKey, FVector4f> Float4s;
+	TMap<FMPDKey, FVector> Float3s;
 	TMap<FMPDKey, UTexture*> Textures;
 };
 #pragma endregion

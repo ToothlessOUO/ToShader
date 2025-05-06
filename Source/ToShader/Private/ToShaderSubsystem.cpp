@@ -139,8 +139,8 @@ TArray<FName> UToShaderSubsystem::GetMaterialEffectPropertyTableRowNames(EMPType
 				RetArray.Emplace(Data.Key);
 		}
 		break;
-	case EMPType::Float4:
-		for (auto Data : MPFloat4Cache)
+	case EMPType::Float3:
+		for (auto Data : MPFloat3Cache)
 		{
 			if (Data.Value->bExposeToMaterialEffect)
 				RetArray.Emplace(Data.Key);
@@ -170,9 +170,9 @@ FMPTableProp* UToShaderSubsystem::GetMP(const FName Name, const EMPType Type)
 		if (MPFloatCache.Contains(Name))
 			return MPFloatCache[Name];
 		break;
-	case EMPType::Float4:
-		if (MPFloat4Cache.Contains(Name))
-			return MPFloat4Cache[Name];
+	case EMPType::Float3:
+		if (MPFloat3Cache.Contains(Name))
+			return MPFloat3Cache[Name];
 		break;
 	case EMPType::Texture:
 		if (MPTextureCache.Contains(Name))
@@ -216,7 +216,7 @@ void UToShaderSubsystem::UpdateMeshRenderersShowLists()
 		return !Renderer.IsValid();
 	});
 	TMap<ERendererTag, FShowList> SavedList;
-	for (auto Renderer : MeshRenderers)
+	for (const auto Renderer : MeshRenderers)
 	{
 		if (!Renderer->TargetMeshTags.IsEmpty())
 		{
@@ -302,7 +302,7 @@ void UToShaderSubsystem::UpdateMaterialEffectPropertyTable()
 
 	MPKeyCache.Empty();
 	MPFloatCache.Empty();
-	MPFloat4Cache.Empty();
+	MPFloat3Cache.Empty();
 	MPTextureCache.Empty();
 	// 遍历RowMap
 	for (const auto& Pair : RowMap)
@@ -317,8 +317,8 @@ void UToShaderSubsystem::UpdateMaterialEffectPropertyTable()
 		case EMPType::Float:
 			MPFloatCache.Add(RowName, RowData);
 			break;
-		case EMPType::Float4:
-			MPFloat4Cache.Add(RowName, RowData);
+		case EMPType::Float3:
+			MPFloat3Cache.Add(RowName, RowData);
 			break;
 		case EMPType::Texture:
 			MPTextureCache.Add(RowName, RowData);
