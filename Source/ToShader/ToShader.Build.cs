@@ -44,6 +44,7 @@ public class ToShader : ModuleRules
 				"RenderCore",
 				"Renderer",
 				"UnrealEd",
+				"MaterialEditor"
 				
 				// ... add private dependencies that you statically link with here ...	
 			}

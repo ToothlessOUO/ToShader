@@ -233,4 +233,7 @@ public:
 	static TArray<FName> MaterialEffect_GetValidName_Texture();
 	UFUNCTION(CallInEditor, BlueprintCallable)
 	static TArray<FName> MaterialEffect_GetValidName_Tag();
+
+	UFUNCTION(BlueprintCallable,BlueprintPure)
+	static EMaterialParamType GetMaterialParamType(UMaterialInterface* M,FName Name);
 };

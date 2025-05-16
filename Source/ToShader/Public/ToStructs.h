@@ -77,3 +77,9 @@ enum class ERTSizeScale : uint8
 ENUM_RANGE_BY_COUNT(ERendererTag, ERendererTag::Max);
 ENUM_RANGE_BY_COUNT(EMaterialEffectActionScope, EMaterialEffectActionScope::Max);
 
+UENUM(BlueprintType)
+enum class EMaterialParamType : uint8
+{
+	None,Scalar,Vector,Texture,StaticSwitch
+};
+

@@ -1,8 +1,10 @@
 #include "MaterialEffect.h"
 
+
 #include "ToShader.h"
 #include "ToShaderSubsystem.h"
 #include "Curves/CurveLinearColor.h"
+#include "Editor/MaterialEditor/Public/MaterialEditingLibrary.h"
 
 void UEffectDataAsset::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -347,4 +349,22 @@ TArray<FName> UMaterialEffectLib::MaterialEffect_GetValidName_Texture()
 TArray<FName> UMaterialEffectLib::MaterialEffect_GetValidName_Tag()
 {
 	return UToShaderSubsystem::GetSubsystem()->GetMaterialEffectTag();
+}
+
+EMaterialParamType UMaterialEffectLib::GetMaterialParamType(UMaterialInterface* M, FName Name)
+{
+	if (M == nullptr) return EMaterialParamType::None;
+	TArray<FName> ScalarNames;
+	UMaterialEditingLibrary::GetScalarParameterNames(M,ScalarNames);
+	if (ScalarNames.Contains(Name)) return EMaterialParamType::Scalar;
+	TArray<FName> VectorNames;
+	UMaterialEditingLibrary::GetVectorParameterNames(M,VectorNames);
+	if (ScalarNames.Contains(Name)) return EMaterialParamType::Vector;
+	TArray<FName> TextureNames;
+	UMaterialEditingLibrary::GetTextureParameterNames(M,TextureNames);
+	if (ScalarNames.Contains(Name)) return EMaterialParamType::Texture;
+	TArray<FName> SwitchNames;
+	UMaterialEditingLibrary::GetStaticSwitchParameterNames(M,SwitchNames);
+	if (ScalarNames.Contains(Name)) return EMaterialParamType::StaticSwitch;
+	return EMaterialParamType::None;
 }
