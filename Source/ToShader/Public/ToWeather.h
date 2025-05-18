@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "LevelSequence.h"
+#include "LevelSequencePlayer.h"
 #include "Components/ActorComponent.h"
 #include "ToWeather.generated.h"
 
@@ -20,6 +22,30 @@ enum class EMoonPhase : uint8
 	WaningCrescent  // 残月
 };
 
+
+UCLASS(Blueprintable)
+class TOSHADER_API UTODDataAsset : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+	public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SunriseStartTime = 5.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SunriseEndTime = 6.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SunsetStartTime = 17.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SunsetEndTime = 18.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MoonOffsetHours = 12;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Latitude = 30;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ULevelSequence* TODSequence = nullptr;
+};
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class TOSHADER_API UToWeather : public UActorComponent
 {
@@ -31,9 +57,18 @@ public:
 	UPROPERTY(EditAnywhere,meta=(
 		ToolTip="若不启用，灯光角度将能够自由控制"))
 	bool bEnableTOD = true;
-	UPROPERTY(EditAnywhere,meta=(
-		EditCondition="bEnableTOD",ClampMin="0.0",ClampMax="24.0"))
+	UPROPERTY(EditAnywhere,Interp,meta=(
+		EditCondition="bEnableTOD && !bAnimTOD",ClampMin="0.0",ClampMax="24.0"))
 	float TODTime = 14.5;
+	UPROPERTY(EditAnywhere,Category="TODAnim",meta=(
+		EditCondition="bEnableTOD"))
+	bool bAnimTOD = false;
+	UPROPERTY(EditAnywhere,Category="TODAnim",meta=(
+		EditCondition="bEnableTOD && bAnimTOD"))
+	float TODAnimScale = 1;
+	UPROPERTY(EditAnywhere,Category="TODAnim",meta=(
+		EditCondition="bEnableTOD && bAnimTOD"))
+	UTODDataAsset* TODAsset = nullptr;
 	
 	UPROPERTY(EditAnywhere, Category="Lighting|Sun",Interp)
 	float SunIntensity = 4.5;
@@ -41,9 +76,7 @@ public:
 	FLinearColor SunColor = FLinearColor::White;
 	UPROPERTY(EditAnywhere, Category="Lighting|Sun",Interp)
 	float SunShadowAmount = 0.55;
-
-	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
-	float MoonOffsetHours = 0.83f;// 月亮比太阳滞后约50分钟（0.83小时）
+	
 	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
 	float MoonIntensity = 2.5;
 	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
@@ -55,6 +88,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 
 private:
 	float LastTODTime;
@@ -65,12 +99,17 @@ private:
 	TObjectPtr<USkyAtmosphereComponent> SkyAtmosphere;
 
 	void Init();
+
+	UPROPERTY()
+	ALevelSequenceActor* SequenceActor;
+	UPROPERTY()
+	ULevelSequencePlayer* LevelSequencePlayer;
 	
 	// 杭州的经纬度（30.25°N, 120.16°E）
 	static constexpr float HangzhouLatitude = 30.25f;
 	static constexpr float HangzhouLongitude = 120.16f;
 
-	void RunTOD();
+	void RunTOD(bool bForceUpdate = false);
 #pragma region 昼夜计算
 	// 固定每日的太阳位置计算（忽略年/月变化）
 	void CalculateFixedSunPosition(
@@ -93,22 +132,6 @@ private:
 	// 转换高度角/方位角为UE旋转
 	static FRotator AltAzToRotator(float Altitude, float Azimuth);
 	
-	/**
-	* 计算太阳和月亮的旋转角度（固定每日角度，仅依赖时间）
-	* @param TimeOfDay 当日时间（小时，0~24）
-	* @param Latitude 纬度（-90~90）
-	* @param Longitude 经度（-180~180）
-	* @param OutSunRotation 太阳光源旋转
-	* @param OutMoonRotation 月亮光源旋转
-	*/
-	void CalculateFixedDaySolarMoonRotation(
-		float TimeOfDay,
-		float Latitude,
-		float Longitude,
-		FRotator& OutSunRotation,
-		FRotator& OutMoonRotation
-	);
-
 	/**
 	 * 计算当前月相（基于日期，与时间无关）
 	 * @param Date 输入日期（年月日）

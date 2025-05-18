@@ -83,3 +83,4 @@ enum class EMaterialParamType : uint8
 	None,Scalar,Vector,Texture,StaticSwitch
 };
 
+

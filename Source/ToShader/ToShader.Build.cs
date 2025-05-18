@@ -23,7 +23,7 @@ public class ToShader : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
+				"Core"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -44,8 +44,9 @@ public class ToShader : ModuleRules
 				"RenderCore",
 				"Renderer",
 				"UnrealEd",
-				"MaterialEditor"
-				
+				"MaterialEditor",
+				"LevelSequence",
+				"MovieScene",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
