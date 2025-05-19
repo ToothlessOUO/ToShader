@@ -76,6 +76,10 @@ public:
 	FLinearColor SunColor = FLinearColor::White;
 	UPROPERTY(EditAnywhere, Category="Lighting|Sun",Interp)
 	float SunShadowAmount = 0.55;
+	UPROPERTY(EditAnywhere, Category="Lighting|Sun",Interp)
+	FColor SunBloomColor = FColor::White;
+	UPROPERTY(EditAnywhere, Category="Lighting|Sun",Interp)
+	float SunBloomScale = 1.f;
 	
 	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
 	float MoonIntensity = 2.5;
@@ -83,12 +87,21 @@ public:
 	FLinearColor MoonColor = FLinearColor::White;
 	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
 	float MoonShadowAmount = 0.55;
+	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
+	FColor MoonBloomColor = FColor::White;
+	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
+	float MoonBloomScale = 1.f;
+	
+	UPROPERTY(EditAnywhere, Category="SkyAtmosphere",Interp)
+	FLinearColor SkyBaseColor = FLinearColor(0.236926,0.74633,1,1);
+	UPROPERTY(EditAnywhere, Category="SkyAtmosphere",Interp)
+	FLinearColor FogColor = FLinearColor(0.170931,0.224525,0.224066,1);
+	
 
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 
 private:
 	float LastTODTime;
@@ -97,6 +110,10 @@ private:
 	TObjectPtr<UDirectionalLightComponent> Moon;
 	TObjectPtr<USkyLightComponent> SkyLight;
 	TObjectPtr<USkyAtmosphereComponent> SkyAtmosphere;
+	TObjectPtr<UStaticMeshComponent> SkySphere;
+	TObjectPtr<UExponentialHeightFogComponent> HeightFog;
+
+	static constexpr int SkySphereBaseColorIndex = 0;//float3
 
 	void Init();
 
@@ -109,7 +126,7 @@ private:
 	static constexpr float HangzhouLatitude = 30.25f;
 	static constexpr float HangzhouLongitude = 120.16f;
 
-	void RunTOD(bool bForceUpdate = false);
+	void RunTOD();
 #pragma region 昼夜计算
 	// 固定每日的太阳位置计算（忽略年/月变化）
 	void CalculateFixedSunPosition(

@@ -5,6 +5,7 @@
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "LevelSequencePlayer.h"
+#include "Components/ExponentialHeightFogComponent.h"
 
 
 UToWeather::UToWeather()
@@ -53,12 +54,6 @@ void UToWeather::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompo
 	RunTOD();
 }
 
-void UToWeather::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-	RunTOD(true);
-}
-
 void UToWeather::Init()
 {
 	if (!GetOwner()) return;
@@ -68,6 +63,7 @@ void UToWeather::Init()
 	if (ChildActors.IsEmpty()) return;
 	for (const auto ChildActor : ChildActors)
 	{
+		if (!ChildActor) continue;
 		if (!Sun || !Moon)
 		{
 			if (auto l = ChildActor->FindComponentByClass<UDirectionalLightComponent>())
@@ -78,16 +74,24 @@ void UToWeather::Init()
 		}
 		if (!SkyLight) SkyLight = ChildActor->FindComponentByClass<USkyLightComponent>();
 		if (!SkyAtmosphere) SkyAtmosphere = ChildActor->FindComponentByClass<USkyAtmosphereComponent>();
+		if (!SkySphere)
+		{
+			if (auto Comp = ChildActor->FindComponentByClass<UStaticMeshComponent>(); Comp != nullptr && Comp->ComponentHasTag("SkySphere"))
+				SkySphere = Comp;
+		}
+		if (!HeightFog) HeightFog = ChildActor->FindComponentByClass<UExponentialHeightFogComponent>();
 	}
-	if (Sun && Moon && SkyLight && SkyAtmosphere)
+	if (Sun && Moon && SkyLight && SkyAtmosphere && SkySphere && HeightFog)
 	{
 		bInitSuccess = true;
 		tolog("ToWeatherInitSuccess");
 
 		Sun->SetUseTemperature(false);
 		Sun->bAffectsWorld = true;
+		Sun->BloomThreshold = 0;
 		Moon->SetUseTemperature(false);
 		Moon->bAffectsWorld = true;
+		Moon->BloomThreshold = 0;
 
 		if (!bEnableTOD)
 		{
@@ -96,29 +100,50 @@ void UToWeather::Init()
 	}
 }
 
-void UToWeather::RunTOD(bool bForceUpdate)
+void UToWeather::RunTOD()
 {
-	if (!bForceUpdate)
-		if (!bInitSuccess || FMath::IsNearlyEqual(TODTime, LastTODTime)) return;
+
+	if (!bInitSuccess) return;
+	
 	FRotator SunRot, MoonRot;
 	float SunScale, MoonScale;
 
 	CalculateSolarMoonWithIntensity(TODTime, TODAsset == nullptr ? HangzhouLatitude : TODAsset->Latitude, HangzhouLongitude,
 	                                5, SunRot, MoonRot, SunScale, MoonScale);
 
+	MoonScale *= MoonScale * MoonScale;//月亮变化更快
+	
 	Sun->SetWorldRotation(SunRot);
 	Sun->SetLightColor(SunColor);
 	Sun->SetIntensity(SunIntensity * SunScale);
 	Sun->CastShadows = SunScale > 0.2f ? 1 : 0;
 	Sun->SetShadowAmount(FMath::Lerp(0, SunShadowAmount, SunScale));
 	Sun->bAffectsWorld = !FMath::IsNearlyEqual(SunScale, 0);
-
+	Sun->bEnableLightShaftBloom = !FMath::IsNearlyEqual(SunScale*SunScale*SunScale, 0);
+	Sun->BloomScale = SunBloomScale;
+	
 	Moon->SetWorldRotation(MoonRot);
 	Moon->SetLightColor(MoonColor);
 	Moon->SetIntensity(MoonIntensity * MoonScale);
 	Moon->CastShadows = MoonScale > 0.5f ? 1 : 0;
 	Moon->SetShadowAmount(FMath::Lerp(0, MoonShadowAmount, MoonScale));
 	Moon->bAffectsWorld = !FMath::IsNearlyEqual(MoonScale, 0);
+	Moon->bEnableLightShaftBloom = !FMath::IsNearlyEqual(MoonScale*MoonScale, 0);
+	Moon->BloomScale = MoonBloomScale;
+
+	if (Sun->bEnableLightShaftBloom)
+	{
+		Sun->BloomTint = SunBloomColor;
+		Moon->BloomTint = SunBloomColor;
+	}else
+	{
+		Sun->BloomTint = MoonBloomColor;
+		Moon->BloomTint = MoonBloomColor;
+	}
+
+	SkySphere->SetCustomPrimitiveDataVector3(SkySphereBaseColorIndex,FVector(SkyBaseColor));
+
+	HeightFog->SetFogInscatteringColor(FogColor);
 
 	LastTODTime = TODTime;
 }
