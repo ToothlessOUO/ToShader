@@ -35,8 +35,7 @@ FMPDGroup UMaterialEffectLib::MakeMPDGroup(UEffectDataAsset* Asset, bool& bIsVal
 			{
 				return Log_CannotFindInDataTable(K.Name, bIsValid);
 			}
-			bool bIsKey = R->Type == EMPType::Key;
-			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex, bIsKey};
+			FMPDKey Key{K.Name, R->CustomPrimitiveDataIndex, true};
 			MPD.Floats.Emplace(Key, 1);
 		}
 	}

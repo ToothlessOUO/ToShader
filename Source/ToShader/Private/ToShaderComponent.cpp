@@ -15,7 +15,7 @@ void UToShaderComponent::ApplyNewEffect(UEffectDataAsset* NewEffect)
 	const int ASID = (int)NewEffect->ActionScope;
 	const FName ASName = GetSubsystem()->GetMaterialEffectTag()[ASID];
 	if (!MeshTags.Contains(ASName)) return; //所有需要的Mesh请务必提前在Actor中添加并设置好，避免运行时开销
-	const auto Tag = ASName;
+	const auto Tag = ASName;//作用域名字，同样也是RenderTag名字
 	if (!MaterialEffectData.Contains(Tag))
 	{
 		MaterialEffectData.Emplace(Tag);
@@ -67,11 +67,11 @@ UToShaderSubsystem* UToShaderComponent::GetSubsystem()
 
 void UToShaderComponent::Init()
 {
-	CacheMeshTags();
+	CacheTagMeshes();
 	CollectTargetsAndCallSubsystem();
 }
 
-void UToShaderComponent::CacheMeshTags()
+void UToShaderComponent::CacheTagMeshes()
 {
 	Meshes.Components.Empty();
 	MeshTags.Empty();
@@ -79,14 +79,22 @@ void UToShaderComponent::CacheMeshTags()
 	if (!GetOwner()) return;
 	TArray<UMeshComponent*> M;
 	GetOwner()->GetComponents<UMeshComponent>(M);
+	
 	for (auto Element : M)
 	{
 		if (!Element) continue;
 		Meshes.Components.Emplace(Element);
 		if (bHasBeginPlay)
 		{
+			//实例化材质
 			Meshes.MeshDyMaterial.Emplace(Element);
 			Meshes.MeshDyMaterial[Element] = UToShaderHelpers::makeAndApplyMeshMaterialsDynamic(Element);
+
+			//为Outline设置特效覆层
+			if (GetSubsystem()->IsMeshContainsRenderTag(Element,ERendererTag::Outline))
+			{
+				Element->OverlayMaterial = GetSubsystem()->GetOverlayEffectMaterial();
+			}
 			if (Element->OverlayMaterial != nullptr)
 			{
 				Meshes.OverlayMaterials.Emplace(Element);
@@ -159,6 +167,11 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 						for (auto Mesh : MeshTags[CurModifyTag].Components)
 						{
 							UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Name, 0, Meshes.MeshDyMaterial[Mesh]);
+							//对于PerMaterial的覆层参数，需要额外设置
+							if (Meshes.OverlayMaterials[Mesh] != nullptr)
+							{
+								Meshes.OverlayMaterials[Mesh]->SetScalarParameterValue(E.Name,0);
+							}
 						}
 					}
 					//修改LastGroup

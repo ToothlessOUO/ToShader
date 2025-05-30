@@ -27,7 +27,7 @@ public:
 
 	static UToShaderSubsystem* GetSubsystem();
 	
-	static bool IsMeshContainsTag(UPrimitiveComponent* Mesh,ERendererTag Tag);
+	bool IsMeshContainsRenderTag(UPrimitiveComponent* Mesh,ERendererTag Tag);
 
 	void CallUpdateMeshRenderers();
 
@@ -41,6 +41,9 @@ public:
 	FMPTableProp* GetMP(FName Name,EMPType Type);
 	
 	TArray<FName> GetMaterialEffectTag();
+
+	UFUNCTION(BlueprintCallable,BlueprintPure)
+	UMaterial* GetOverlayEffectMaterial();
 
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
@@ -62,7 +65,7 @@ private:
 	
 	UPROPERTY()
 	TMap<ERendererTag,FName> RendererTagNames;
-	bool GetTagName(ERendererTag Tag,FName& TagName);
+	bool GetRenderTagName(ERendererTag Tag,FName& TagName);
 	
 	TWeakObjectPtr<AScreenOverlayMeshManager> ScreenMeshManager;
 	
@@ -75,6 +78,9 @@ private:
 	TWeakObjectPtr<UDataTable> MaterialEffectPropertyTable;
 	void UpdateMaterialEffectPropertyTable();
 
+	void CacheObjs();
+	TObjectPtr<UMaterial> OverlayEffectMat = nullptr;
+	const FString Path_OverlayEffectMaterial = "/ToShader/Shaders/ToShading/M_OverlayEffect.M_OverlayEffect";
 	
 	bool Tick(float DeltaTime);
 	FTSTicker::FDelegateHandle TickDelegateHandle;

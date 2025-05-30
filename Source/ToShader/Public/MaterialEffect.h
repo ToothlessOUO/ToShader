@@ -34,7 +34,7 @@ struct FMPTableProp : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bExposeToMaterialEffect = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EMaterialEffectActionScope ActionScope;
+	EMaterialEffectActionScope ActionScope = EMaterialEffectActionScope::Body;
 };
 #pragma endregion
 

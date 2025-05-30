@@ -6,8 +6,6 @@
 #include "ShaderCore.h"
 #include "Editor.h"
 #include "LevelEditorViewport.h"
-#include "Kismet/KismetRenderingLibrary.h"
-#include "Slate/SceneViewport.h"
 
 DEFINE_LOG_CATEGORY(LogToShader);
 
@@ -268,6 +266,8 @@ void FToShaderModule::ApplyEngineConfigs()
 	const FString ConfigPath = FPaths::ProjectConfigDir() / TEXT("DefaultEngine.ini");
 	const FString Section = "/Script/Engine.RendererSettings";
 	TMap<FString, FString> ConfigKV;
+	//禁用nanite
+	ConfigKV.Emplace("r.Nanite","0");
 	ConfigKV.Emplace("r.Nanite.Allowtessellation", "1");
 	ConfigKV.Emplace("r.Nanite.Tessellation", "1");
 	ConfigKV.Emplace("r.VirtualTextures", "False");

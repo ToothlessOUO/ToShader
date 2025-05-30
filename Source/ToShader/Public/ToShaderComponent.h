@@ -57,7 +57,7 @@ private:
 
 	FMeshGroupDyMat Meshes;
 	TMap<FName, FMeshGroup> MeshTags;
-	void CacheMeshTags();
+	void CacheTagMeshes();
 
 	void CollectTargetsAndCallSubsystem();
 

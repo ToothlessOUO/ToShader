@@ -60,6 +60,9 @@ public:
 	UPROPERTY(EditAnywhere,Interp,meta=(
 		EditCondition="bEnableTOD && !bAnimTOD",ClampMin="0.0",ClampMax="24.0"))
 	float TODTime = 14.5;
+	UPROPERTY(EditAnywhere,meta=(
+		EditCondition="bEnableTOD",ClampMin="0.0",ClampMax="24.0"))
+	float TODTimeWhenBeginPlay = 14.5;
 	UPROPERTY(EditAnywhere,Category="TODAnim",meta=(
 		EditCondition="bEnableTOD"))
 	bool bAnimTOD = false;
@@ -80,6 +83,8 @@ public:
 	FColor SunBloomColor = FColor::White;
 	UPROPERTY(EditAnywhere, Category="Lighting|Sun",Interp)
 	float SunBloomScale = 1.f;
+	UPROPERTY(EditAnywhere, Category="Lighting|Sun",Interp)
+	FColor SunMeshColor = FColor::White;
 	
 	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
 	float MoonIntensity = 2.5;
@@ -91,6 +96,8 @@ public:
 	FColor MoonBloomColor = FColor::White;
 	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
 	float MoonBloomScale = 1.f;
+	UPROPERTY(EditAnywhere, Category="Lighting|Moon",Interp)
+	FColor MoonMeshColor = FColor::White;
 	
 	UPROPERTY(EditAnywhere, Category="SkyAtmosphere",Interp)
 	FLinearColor SkyBaseColor = FLinearColor(0.236926,0.74633,1,1);
@@ -106,14 +113,20 @@ protected:
 private:
 	float LastTODTime;
 	bool bInitSuccess = false;
+	
 	TObjectPtr<UDirectionalLightComponent> Sun;
+	TObjectPtr<UStaticMeshComponent> SunMesh;
 	TObjectPtr<UDirectionalLightComponent> Moon;
+	TObjectPtr<UStaticMeshComponent> MoonMesh;
 	TObjectPtr<USkyLightComponent> SkyLight;
 	TObjectPtr<USkyAtmosphereComponent> SkyAtmosphere;
 	TObjectPtr<UStaticMeshComponent> SkySphere;
 	TObjectPtr<UExponentialHeightFogComponent> HeightFog;
 
 	static constexpr int SkySphereBaseColorIndex = 0;//float3
+	static constexpr int SunColorIndex = 0;
+	static constexpr int SunForwardIndex = 4;
+	static constexpr int SunRightIndex = 7;
 
 	void Init();
 

@@ -26,8 +26,8 @@ void UToWeather::BeginPlay()
 		FMovieSceneSequencePlaybackSettings PlaybackSettings;
 		PlaybackSettings.bAutoPlay = true;
 		PlaybackSettings.LoopCount.Value = -1;
-		PlaybackSettings.StartTime = TODTime * 10 / 30;
-		tolog("TODTime:", TODTime);
+		PlaybackSettings.StartTime = TODTimeWhenBeginPlay * 10 / 30;
+		tolog("TODTime:", TODTimeWhenBeginPlay);
 		PlaybackSettings.PlayRate = 1 / TODAnimScale;
 
 		LevelSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), TODAsset->TODSequence, PlaybackSettings, SequenceActor);
@@ -72,16 +72,29 @@ void UToWeather::Init()
 				if (!Moon && l->ComponentHasTag("Moon")) Moon = l;
 			}
 		}
+
 		if (!SkyLight) SkyLight = ChildActor->FindComponentByClass<USkyLightComponent>();
 		if (!SkyAtmosphere) SkyAtmosphere = ChildActor->FindComponentByClass<USkyAtmosphereComponent>();
+		if (!HeightFog) HeightFog = ChildActor->FindComponentByClass<UExponentialHeightFogComponent>();
+
+		//渲染Mesh
+		if (!SunMesh)
+		{
+			if (auto Comp = ChildActor->FindComponentByClass<UStaticMeshComponent>(); Comp != nullptr && Comp->ComponentHasTag("SunMesh"))
+				SunMesh = Comp;
+		}
+		if (!MoonMesh)
+		{
+			if (auto Comp = ChildActor->FindComponentByClass<UStaticMeshComponent>(); Comp != nullptr && Comp->ComponentHasTag("MoonMesh"))
+				MoonMesh = Comp;
+		}
 		if (!SkySphere)
 		{
 			if (auto Comp = ChildActor->FindComponentByClass<UStaticMeshComponent>(); Comp != nullptr && Comp->ComponentHasTag("SkySphere"))
 				SkySphere = Comp;
 		}
-		if (!HeightFog) HeightFog = ChildActor->FindComponentByClass<UExponentialHeightFogComponent>();
 	}
-	if (Sun && Moon && SkyLight && SkyAtmosphere && SkySphere && HeightFog)
+	if (Sun && Moon && SkyLight && SkyAtmosphere && HeightFog)
 	{
 		bInitSuccess = true;
 		tolog("ToWeatherInitSuccess");
@@ -141,7 +154,22 @@ void UToWeather::RunTOD()
 		Moon->BloomTint = MoonBloomColor;
 	}
 
-	SkySphere->SetCustomPrimitiveDataVector3(SkySphereBaseColorIndex,FVector(SkyBaseColor));
+	if (SkySphere)
+	{
+		SkySphere->SetCustomPrimitiveDataVector3(SkySphereBaseColorIndex,FVector(SkyBaseColor));
+	}
+	if (SunMesh)
+	{
+		SunMesh->SetCustomPrimitiveDataVector3(SunColorIndex,FVector(SunMeshColor));
+		SunMesh->SetCustomPrimitiveDataVector3(SunForwardIndex,FVector(Sun->GetForwardVector()));
+		SunMesh->SetCustomPrimitiveDataVector3(SunRightIndex,FVector(Sun->GetRightVector()));
+	}
+	if (MoonMesh)
+	{
+		MoonMesh->SetCustomPrimitiveDataVector3(SunColorIndex,FVector(MoonMeshColor));
+		MoonMesh->SetCustomPrimitiveDataVector3(SunForwardIndex,FVector(Moon->GetForwardVector()));
+		MoonMesh->SetCustomPrimitiveDataVector3(SunRightIndex,FVector(Moon->GetRightVector()));
+	}
 
 	HeightFog->SetFogInscatteringColor(FogColor);
 

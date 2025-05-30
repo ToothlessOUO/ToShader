@@ -71,13 +71,13 @@ UToShaderSubsystem* UToShaderSubsystem::GetSubsystem()
 	return nullptr;
 }
 
-bool UToShaderSubsystem::IsMeshContainsTag(UPrimitiveComponent* Mesh, ERendererTag Tag)
+bool UToShaderSubsystem::IsMeshContainsRenderTag(UPrimitiveComponent* Mesh, ERendererTag Tag)
 {
 	if (Mesh == nullptr) return false;
 	const auto S = GetSubsystem();
 	if (!S) return false;
 	FName TagName;
-	if (!S->GetTagName(Tag, TagName)) return false;
+	if (!S->GetRenderTagName(Tag, TagName)) return false;
 	for (auto Element : Mesh->ComponentTags)
 	{
 		if (Element == TagName)
@@ -192,12 +192,18 @@ TArray<FName> UToShaderSubsystem::GetMaterialEffectTag()
 	return Res;
 }
 
+UMaterial* UToShaderSubsystem::GetOverlayEffectMaterial()
+{
+	return OverlayEffectMat;
+}
+
 void UToShaderSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
 	TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &ThisClass::Tick));
 
+	CacheObjs();
 	CacheTagNames();
 }
 
@@ -258,7 +264,7 @@ void UToShaderSubsystem::UpdateMeshRenderersShowLists()
 	bShouldUpdateMeshRenderers = false;
 }
 
-bool UToShaderSubsystem::GetTagName(ERendererTag Tag, FName& TagName)
+bool UToShaderSubsystem::GetRenderTagName(ERendererTag Tag, FName& TagName)
 {
 	if (RendererTagNames.IsEmpty()) return false;
 	TagName = RendererTagNames[Tag];
@@ -325,6 +331,14 @@ void UToShaderSubsystem::UpdateMaterialEffectPropertyTable()
 			break;
 		}
 	}
+}
+
+void UToShaderSubsystem::CacheObjs()
+{
+	OverlayEffectMat = LoadObject<UMaterial>(nullptr, *Path_OverlayEffectMaterial);
+
+
+	if (OverlayEffectMat) tolog("Overlay effect material can not find.");
 }
 
 bool UToShaderSubsystem::Tick(float DeltaTime)
