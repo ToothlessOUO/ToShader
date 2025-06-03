@@ -39,8 +39,9 @@ public:
 	void CallUpdate_MaterialEffectPropertyTable();
 	TArray<FName> GetMaterialEffectPropertyTableRowNames(EMPType Type);
 	FMPTableProp* GetMP(FName Name,EMPType Type);
-	
-	TArray<FName> GetMaterialEffectTag();
+
+	FName GetMaterialEffectActionScopeTagName(EMaterialEffectActionScope Target);
+	TArray<FName> GetMaterialEffectActionScopeTagNames();
 
 	UFUNCTION(BlueprintCallable,BlueprintPure)
 	UMaterial* GetOverlayEffectMaterial();
@@ -69,7 +70,7 @@ private:
 	
 	TWeakObjectPtr<AScreenOverlayMeshManager> ScreenMeshManager;
 	
-	TMap<EMaterialEffectActionScope,FName> MaterialEffectTagNames;
+	TMap<EMaterialEffectActionScope,FName> MaterialEffectActionScopeNames;
 	TMap<FName,FMPTableProp*> MPKeyCache;
 	TMap<FName,FMPTableProp*> MPFloatCache;
 	TMap<FName,FMPTableProp*> MPFloat3Cache;

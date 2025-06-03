@@ -124,9 +124,8 @@ private:
 	TObjectPtr<UExponentialHeightFogComponent> HeightFog;
 
 	static constexpr int SkySphereBaseColorIndex = 0;//float3
-	static constexpr int SunColorIndex = 0;
-	static constexpr int SunForwardIndex = 4;
-	static constexpr int SunRightIndex = 7;
+	static constexpr int SunColorIndex = 0;//rgb 012
+	static constexpr int SunAlphaIndex = 3;//alpha 3
 
 	void Init();
 

@@ -59,7 +59,7 @@ void UToWeather::Init()
 	if (!GetOwner()) return;
 	if (bInitSuccess) return;
 	TArray<AActor*> ChildActors;
-	GetOwner()->GetAttachedActors(ChildActors);
+	GetOwner()->GetAttachedActors(ChildActors,true,true);
 	if (ChildActors.IsEmpty()) return;
 	for (const auto ChildActor : ChildActors)
 	{
@@ -94,6 +94,7 @@ void UToWeather::Init()
 				SkySphere = Comp;
 		}
 	}
+	if (!SunMesh) tolog("can't find sun mesh");
 	if (Sun && Moon && SkyLight && SkyAtmosphere && HeightFog)
 	{
 		bInitSuccess = true;
@@ -161,14 +162,12 @@ void UToWeather::RunTOD()
 	if (SunMesh)
 	{
 		SunMesh->SetCustomPrimitiveDataVector3(SunColorIndex,FVector(SunMeshColor));
-		SunMesh->SetCustomPrimitiveDataVector3(SunForwardIndex,FVector(Sun->GetForwardVector()));
-		SunMesh->SetCustomPrimitiveDataVector3(SunRightIndex,FVector(Sun->GetRightVector()));
+		SunMesh->SetCustomPrimitiveDataFloat(SunAlphaIndex,SunScale);
 	}
 	if (MoonMesh)
 	{
 		MoonMesh->SetCustomPrimitiveDataVector3(SunColorIndex,FVector(MoonMeshColor));
-		MoonMesh->SetCustomPrimitiveDataVector3(SunForwardIndex,FVector(Moon->GetForwardVector()));
-		MoonMesh->SetCustomPrimitiveDataVector3(SunRightIndex,FVector(Moon->GetRightVector()));
+		MoonMesh->SetCustomPrimitiveDataFloat(SunAlphaIndex,MoonScale);
 	}
 
 	HeightFog->SetFogInscatteringColor(FogColor);

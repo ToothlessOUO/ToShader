@@ -11,9 +11,9 @@ UToShaderComponent::UToShaderComponent()
 void UToShaderComponent::ApplyNewEffect(UEffectDataAsset* NewEffect)
 {
 	if (!NewEffect || !bHasBeginPlay) return;
-	if (NewEffect->ActionScope > EMaterialEffectActionScope::Outline) return;
+	if (NewEffect->ActionScope == EMaterialEffectActionScope::PP_Uber) return;
 	const int ASID = (int)NewEffect->ActionScope;
-	const FName ASName = GetSubsystem()->GetMaterialEffectTag()[ASID];
+	const FName ASName = GetSubsystem()->GetMaterialEffectActionScopeTagNames()[ASID];
 	if (!MeshTags.Contains(ASName)) return; //所有需要的Mesh请务必提前在Actor中添加并设置好，避免运行时开销
 	const auto Tag = ASName;//作用域名字，同样也是RenderTag名字
 	if (!MaterialEffectData.Contains(Tag))
@@ -79,6 +79,12 @@ void UToShaderComponent::CacheTagMeshes()
 	if (!GetOwner()) return;
 	TArray<UMeshComponent*> M;
 	GetOwner()->GetComponents<UMeshComponent>(M);
+
+	//为所有Mesh打上标记
+	for (auto MeshComponent : M)
+	{
+		MeshComponent->ComponentTags.AddUnique(GetSubsystem()->GetMaterialEffectActionScopeTagName(EMaterialEffectActionScope::All));
+	}
 	
 	for (auto Element : M)
 	{
@@ -121,7 +127,7 @@ void UToShaderComponent::CollectTargetsAndCallSubsystem()
 	for (ERendererTag E : TEnumRange<ERendererTag>())
 	{
 		const auto TagName = FName(EnumPtr->GetNameStringByValue(static_cast<int64>(E)));
-		if (!MeshTags.Contains(TagName)) continue;
+		if (!MeshTags.Find(TagName)) continue;
 		RendererGroup.Emplace(E, MeshTags[TagName]);
 	}
 	GetSubsystem()->AddModuleToSubsystem(this);
@@ -168,7 +174,7 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 						{
 							UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Name, 0, Meshes.MeshDyMaterial[Mesh]);
 							//对于PerMaterial的覆层参数，需要额外设置
-							if (Meshes.OverlayMaterials[Mesh] != nullptr)
+							if (Meshes.OverlayMaterials.Find(Mesh))
 							{
 								Meshes.OverlayMaterials[Mesh]->SetScalarParameterValue(E.Name,0);
 							}
@@ -225,7 +231,7 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 						UToShaderHelpers::setDynamicMaterialGroupFloatParam(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
 						//设置覆层参数
 						if (Mesh->OverlayMaterial == nullptr) continue;
-						if (!Meshes.OverlayMaterials.Contains(Mesh)) continue;
+						if (!Meshes.OverlayMaterials.Find(Mesh)) continue;
 						Meshes.OverlayMaterials[Mesh]->SetScalarParameterValue(E.Key.Name, E.Value);
 					}
 				}
@@ -261,7 +267,7 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 						UToShaderHelpers::setDynamicMaterialGroupFloat3Param(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
 
 						if (Mesh->OverlayMaterial == nullptr) continue;
-						if (!Meshes.OverlayMaterials.Contains(Mesh)) continue;
+						if (!Meshes.OverlayMaterials.Find(Mesh)) continue;
 						Meshes.OverlayMaterials[Mesh]->SetVectorParameterValue(E.Key.Name, E.Value);
 					}
 				}
@@ -282,7 +288,7 @@ void UToShaderComponent::UpdateMaterialEffect(float Dt)
 					UToShaderHelpers::setDynamicMaterialGroupTextureParam(E.Key.Name, E.Value, Meshes.MeshDyMaterial[Mesh]);
 
 					if (Mesh->OverlayMaterial == nullptr) continue;
-					if (!Meshes.OverlayMaterials.Contains(Mesh)) continue;
+					if (!Meshes.OverlayMaterials.Find(Mesh)) continue;
 					Meshes.OverlayMaterials[Mesh]->SetTextureParameterValue(E.Key.Name, E.Value);
 				}
 			}

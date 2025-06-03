@@ -182,11 +182,17 @@ FMPTableProp* UToShaderSubsystem::GetMP(const FName Name, const EMPType Type)
 	return nullptr;
 }
 
-TArray<FName> UToShaderSubsystem::GetMaterialEffectTag()
+FName UToShaderSubsystem::GetMaterialEffectActionScopeTagName(EMaterialEffectActionScope Target)
+{
+	return MaterialEffectActionScopeNames[Target];
+}
+
+TArray<FName> UToShaderSubsystem::GetMaterialEffectActionScopeTagNames()
 {
 	TArray<FName> Res;
-	for (auto E : MaterialEffectTagNames)
+	for (auto E : MaterialEffectActionScopeNames)
 	{
+		if (E.Key == EMaterialEffectActionScope::Max) continue;
 		Res.Emplace(E.Value);
 	}
 	return Res;
@@ -286,7 +292,7 @@ void UToShaderSubsystem::CacheTagNames()
 	for (EMaterialEffectActionScope E : TEnumRange<EMaterialEffectActionScope>())
 	{
 		const auto TagName = FName(EnumPtr->GetNameStringByValue(static_cast<int64>(E)));
-		MaterialEffectTagNames.Emplace(E, TagName);
+		MaterialEffectActionScopeNames.Emplace(E, TagName);
 	}
 }
 

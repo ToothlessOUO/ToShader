@@ -60,8 +60,9 @@ UENUM(BlueprintType)
 enum class EMaterialEffectActionScope : uint8
 {
 	Body,Weapon,Outline,
+	All,//说明可以被所有使用，除了PP
 	PP_Uber,
-	Max
+	Max UMETA(Hidden)
 };
 
 

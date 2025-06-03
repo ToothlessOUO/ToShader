@@ -347,7 +347,7 @@ TArray<FName> UMaterialEffectLib::MaterialEffect_GetValidName_Texture()
 
 TArray<FName> UMaterialEffectLib::MaterialEffect_GetValidName_Tag()
 {
-	return UToShaderSubsystem::GetSubsystem()->GetMaterialEffectTag();
+	return UToShaderSubsystem::GetSubsystem()->GetMaterialEffectActionScopeTagNames();
 }
 
 EMaterialParamType UMaterialEffectLib::GetMaterialParamType(UMaterialInterface* M, FName Name)
